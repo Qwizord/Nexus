@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xcodebuild -scheme nexus -destination 'platform=iOS Simulator,name=iPhone 16 Pro' build)",
+      "Bash(sudo xcode-select:*)",
+      "Bash(xcodebuild -scheme nexus -project /Users/user/Developer/Nexus/nexus/nexus.xcodeproj -destination 'platform=iOS Simulator,name=iPhone 16 Pro' build)",
+      "Bash(DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -scheme nexus -project /Users/user/Developer/Nexus/nexus/nexus.xcodeproj -destination 'platform=iOS Simulator,name=iPhone 16 Pro' build)",
+      "Bash(DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -scheme nexus -project /Users/user/Developer/Nexus/nexus/nexus.xcodeproj -destination 'generic/platform=iOS Simulator' build)"
+    ]
+  }
+}
