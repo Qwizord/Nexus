@@ -79,11 +79,16 @@ final class MotionManager: ObservableObject {
 
     private func start() {
         guard manager.isDeviceMotionAvailable else { return }
-        manager.deviceMotionUpdateInterval = 1.0 / 30.0
+        manager.deviceMotionUpdateInterval = 1.0 / 8.0   // 8fps достаточно для плавного sheen-эффекта
         manager.startDeviceMotionUpdates(to: .main) { [weak self] motion, _ in
-            guard let motion else { return }
-            self?.roll = motion.attitude.roll
-            self?.pitch = motion.attitude.pitch
+            guard let motion, let self else { return }
+            let newRoll  = motion.attitude.roll
+            let newPitch = motion.attitude.pitch
+            // Обновляем только при значимом изменении — избегаем лишних перерисовок
+            if abs(newRoll - self.roll) > 0.008 || abs(newPitch - self.pitch) > 0.008 {
+                self.roll  = newRoll
+                self.pitch = newPitch
+            }
         }
     }
 }
@@ -107,6 +112,9 @@ struct AuthUser: Codable {
 struct StoredUserProfile: Codable {
     var firstName: String
     var lastName: String
+    var middleName: String = ""
+    var username: String = ""
+    var bio: String = ""
     var email: String
     var phone: String?
     var avatarData: Data?
@@ -114,6 +122,12 @@ struct StoredUserProfile: Codable {
     var weightKg: Double
     var heightCm: Double
     var gender: String
+    var race: String = ""
+    var ethnicity: String = ""
+    var dietType: String = ""
+    var maritalStatus: String = ""
+    var country: String = ""
+    var city: String = ""
 }
 
 @MainActor
@@ -127,6 +141,10 @@ class AppState: ObservableObject {
 
     static let shared = AppState()
 
+    // Флаг: пользователь только что зарегистрировался в этой сессии.
+    // Если true — catch в handleAuthChange показывает онбординг (не разлогинивает).
+    var isFreshRegistration = false
+
     private let authManager = AuthenticationManager.shared
     private let firebase = FirebaseService.shared
     private let settingsKey = "appSettings"
@@ -135,6 +153,8 @@ class AppState: ObservableObject {
     private init() {
         if let stored = loadSettings() {
             settings = stored
+            // Применяем сохранённый язык сразу при старте
+            LocalizationManager.shared.setLanguage(stored.language)
         }
 
         // Слушаем Firebase Auth state
@@ -148,7 +168,11 @@ class AppState: ObservableObject {
         // Сохраняем settings локально при изменении
         $settings
             .dropFirst()
-            .sink { [weak self] in self?.saveSettings($0) }
+            .sink { [weak self] newSettings in
+                self?.saveSettings(newSettings)
+                // Обновляем LocalizationManager при смене языка
+                LocalizationManager.shared.setLanguage(newSettings.language)
+            }
             .store(in: &cancellables)
 
         // Синхронизируем settings с Firestore при изменении
@@ -174,9 +198,11 @@ class AppState: ObservableObject {
             if onboardingDone {
                 currentScreen = .main
                 loadProfileFromFirebase()
-            } else {
-                currentScreen = .onboarding
             }
+            // Если onboardingDone == false: НЕ переходим на onboarding сразу.
+            // handleAuthChange (через Combine-подписку) сначала проверит Firestore
+            // и только если профиля нет — покажет onboarding.
+            // Так устраняется мигание формы при входе в существующий аккаунт.
         } else {
             // Fallback: проверяем legacy UserDefaults auth
             let isLoggedIn = UserDefaults.standard.bool(forKey: "isLoggedIn")
@@ -192,16 +218,57 @@ class AppState: ObservableObject {
         }
     }
 
+    // Флаг для предотвращения двойного Firestore-запроса
+    // (checkAuthState + handleAuthChange могут сработать одновременно при старте)
+    private var isResolvingProfile = false
+
     private func handleAuthChange(isAuthenticated: Bool) {
         if isAuthenticated {
             let onboardingDone = UserDefaults.standard.bool(forKey: "onboardingDone")
-            withAnimation(.spring(response: 0.5)) {
-                currentScreen = onboardingDone ? .main : .onboarding
-            }
             if onboardingDone {
+                withAnimation(.spring(response: 0.5)) { currentScreen = .main }
                 loadProfileFromFirebase()
+            } else {
+                // Уже выполняем проверку — не запускаем повторно
+                guard !isResolvingProfile else { return }
+                isResolvingProfile = true
+
+                Task {
+                    defer { isResolvingProfile = false }
+
+                    // currentUserId может кратковременно быть nil пока Firebase
+                    // восстанавливает сессию — просто ждём, не показываем onboarding
+                    guard let userId = authManager.currentUserId else { return }
+
+                    do {
+                        let profile = try await firebase.userRepo.fetchProfile(userId: userId)
+                        userProfile = profile
+                        UserDefaults.standard.set(true, forKey: "onboardingDone")
+                        if let s = try? await firebase.userRepo.fetchSettings(userId: userId) {
+                            var merged = s
+                            merged.theme = settings.theme
+                            merged.language = settings.language
+                            settings = merged
+                            saveSettings(merged)
+                        }
+                        withAnimation(.spring(response: 0.5)) { currentScreen = .main }
+                    } catch {
+                        if self.isFreshRegistration {
+                            // Новый пользователь — профиля ещё нет, это нормально.
+                            // Показываем онбординг чтобы заполнить профиль.
+                            self.isFreshRegistration = false
+                            withAnimation(.spring(response: 0.5)) { currentScreen = .onboarding }
+                        } else {
+                            // Перезапуск с незавершённой регистрацией —
+                            // разлогиниваем и возвращаем на экран входа.
+                            self.authManager.signOut()
+                            withAnimation(.spring(response: 0.5)) { currentScreen = .auth }
+                        }
+                    }
+                }
             }
         } else {
+            isResolvingProfile = false
             withAnimation(.spring(response: 0.5)) {
                 currentScreen = .auth
             }
@@ -213,11 +280,18 @@ class AppState: ObservableObject {
 
     func signIn(with user: AuthUser) {
         authUser = user
+        isFreshRegistration = true   // пользователь только что зарегистрировался/вошёл
         UserDefaults.standard.set(true, forKey: "isLoggedIn")
+
         let onboardingDone = UserDefaults.standard.bool(forKey: "onboardingDone")
-        withAnimation(.spring(response: 0.5)) {
-            currentScreen = onboardingDone ? .main : .onboarding
+        if onboardingDone {
+            // Уже был в приложении — сразу на .main
+            isFreshRegistration = false
+            withAnimation(.spring(response: 0.5)) { currentScreen = .main }
+            loadProfileFromFirebase()
         }
+        // Иначе — ждём handleAuthChange, который проверит Firestore и решит
+        // показывать ли onboarding или сразу main (для существующих аккаунтов)
     }
 
     func registerEmail(email: String, password: String) {
@@ -265,8 +339,15 @@ class AppState: ObservableObject {
 
         // Сохраняем в Firestore
         Task {
-            try? await firebase.userRepo.saveProfile(profile, userId: userId)
-            try? await firebase.userRepo.saveSettings(settings, userId: userId)
+            do {
+                print("🔥 Saving profile to Firestore, userId: \(userId)")
+                try await firebase.userRepo.saveProfile(profile, userId: userId)
+                print("✅ Profile saved successfully")
+                try await firebase.userRepo.saveSettings(settings, userId: userId)
+                print("✅ Settings saved successfully")
+            } catch {
+                print("❌ Firestore save error: \(error)")
+            }
         }
 
         withAnimation(.spring(response: 0.5)) {
@@ -286,19 +367,57 @@ class AppState: ObservableObject {
         }
     }
 
+    // MARK: - Refresh
+
+    func refreshProfile() async {
+        guard let userId = authManager.currentUserId else { return }
+        do {
+            let profile = try await firebase.userRepo.fetchProfile(userId: userId)
+            self.userProfile = profile
+            var remoteSettings = try await firebase.userRepo.fetchSettings(userId: userId)
+            remoteSettings.theme = self.settings.theme
+            remoteSettings.language = self.settings.language
+            self.settings = remoteSettings
+            saveSettings(remoteSettings)
+        } catch {
+            // Fallback to local data
+        }
+    }
+
+    // MARK: - Profile Update
+
+    func updateProfile(_ profile: UserProfile) {
+        self.userProfile = profile
+        saveUserProfile(profile)
+        guard let userId = authManager.currentUserId else { return }
+        Task {
+            try? await firebase.userRepo.saveProfile(profile, userId: userId)
+        }
+    }
+
     // MARK: - Avatar
 
     func updateAvatar(_ data: Data?) {
         guard let profile = userProfile else { return }
-        profile.avatarData = data
+        let compressed = data.flatMap { compressAvatar($0) } ?? data
+        profile.avatarData = compressed
         saveUserProfile(profile)
 
-        // Синхронизируем с Firestore
-        if let data, let userId = authManager.currentUserId {
+        if let compressed, let userId = authManager.currentUserId {
             Task {
-                _ = try? await firebase.userRepo.updateAvatar(data, userId: userId)
+                _ = try? await firebase.userRepo.updateAvatar(compressed, userId: userId)
             }
         }
+    }
+
+    private func compressAvatar(_ data: Data) -> Data? {
+        guard let image = UIImage(data: data) else { return data }
+        let maxSize: CGFloat = 400
+        let scale = min(maxSize / image.size.width, maxSize / image.size.height, 1.0)
+        let newSize = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+        let renderer = UIGraphicsImageRenderer(size: newSize)
+        let resized = renderer.image { _ in image.draw(in: CGRect(origin: .zero, size: newSize)) }
+        return resized.jpegData(compressionQuality: 0.7)
     }
 
     // MARK: - Firebase Profile Loading
@@ -325,13 +444,22 @@ class AppState: ObservableObject {
         let stored = StoredUserProfile(
             firstName: profile.firstName,
             lastName: profile.lastName,
+            middleName: profile.middleName,
+            username: profile.username,
+            bio: profile.bio,
             email: profile.email,
             phone: profile.phone,
             avatarData: profile.avatarData,
             birthDate: profile.birthDate,
             weightKg: profile.weightKg,
             heightCm: profile.heightCm,
-            gender: profile.gender
+            gender: profile.gender,
+            race: profile.race,
+            ethnicity: profile.ethnicity,
+            dietType: profile.dietType,
+            maritalStatus: profile.maritalStatus,
+            country: profile.country,
+            city: profile.city
         )
         if let data = try? JSONEncoder().encode(stored) {
             UserDefaults.standard.set(data, forKey: "userProfile")
@@ -345,11 +473,20 @@ class AppState: ObservableObject {
         let profile = UserProfile(
             firstName: stored.firstName,
             lastName: stored.lastName,
+            middleName: stored.middleName,
+            username: stored.username,
+            bio: stored.bio,
             email: stored.email,
             birthDate: stored.birthDate,
             weightKg: stored.weightKg,
             heightCm: stored.heightCm,
-            gender: stored.gender
+            gender: stored.gender,
+            race: stored.race,
+            ethnicity: stored.ethnicity,
+            dietType: stored.dietType,
+            maritalStatus: stored.maritalStatus,
+            country: stored.country,
+            city: stored.city
         )
         profile.phone = stored.phone
         profile.avatarData = stored.avatarData

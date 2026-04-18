@@ -1,1 +1,214 @@
+/* French — Localizable.strings */
 
+// Tabs
+"tab.health" = "Santé";
+"tab.finance" = "Finances";
+"tab.ai" = "IA";
+"tab.learning" = "Apprentissage";
+"tab.settings" = "Réglages";
+
+// Settings
+"settings.title" = "Réglages";
+"settings.stats" = "Statistiques";
+"settings.stats.detail" = "En détail";
+"settings.integrations" = "Intégrations";
+"settings.security" = "Sécurité et apparence";
+"settings.theme" = "Thème";
+"settings.language" = "Langue";
+"settings.units" = "Unités";
+"settings.currency" = "Devise";
+"settings.notifications" = "Notifications";
+"settings.spotlight" = "Spotlight";
+"settings.faceid" = "Face ID / Touch ID";
+"settings.account" = "Compte";
+"settings.signout" = "Se déconnecter";
+"settings.version" = "Version";
+"settings.rate" = "Noter Nexus";
+"settings.share" = "Partager";
+"settings.support" = "Assistance";
+"settings.feedback" = "Vos commentaires";
+"settings.cache" = "Vider le cache";
+"settings.faq" = "FAQ";
+"settings.privacy" = "Politique de confidentialité";
+"settings.terms" = "Conditions d'utilisation";
+"settings.changelog" = "Journal des modifications";
+
+// Profile
+"profile.title" = "Profil";
+"profile.firstname" = "Prénom";
+"profile.middlename" = "Deuxième prénom";
+"profile.lastname" = "Nom de famille";
+"profile.username" = "Nom d'utilisateur";
+"profile.bio" = "Biographie";
+"profile.height" = "Taille";
+"profile.weight" = "Poids";
+"profile.gender" = "Genre";
+"profile.birthdate" = "Date de naissance";
+"profile.country" = "Pays";
+"profile.city" = "Ville";
+"profile.race" = "Race";
+"profile.ethnicity" = "Ethnie / Nationalité";
+"profile.diet" = "Régime alimentaire";
+"profile.marital" = "Situation familiale";
+"profile.about" = "À propos de moi";
+
+// Finance
+"finance.title" = "Finances";
+"finance.income" = "Revenus";
+"finance.expense" = "Dépenses";
+"finance.balance" = "Solde";
+"finance.debt" = "Dettes";
+"finance.investments" = "Investissements";
+"finance.transactions" = "Transactions";
+"finance.budget" = "Budget";
+"finance.nodata" = "Aucune opération pour cette période";
+
+// Health
+"health.title" = "Santé";
+"health.steps" = "Pas";
+"health.sleep" = "Sommeil";
+"health.heartrate" = "Fréquence cardiaque";
+"health.calories" = "Calories";
+"health.water" = "Eau";
+
+// AI
+"ai.title" = "Assistant IA";
+"ai.newchat" = "Nouvelle conversation";
+"ai.history" = "Historique";
+"ai.typing" = "Rédaction en cours...";
+"ai.copy" = "Tout copier";
+
+// Subscription
+"sub.title" = "Nexus Pro";
+"sub.subtitle" = "Libérez tout le potentiel de l'application";
+"sub.monthly" = "Mensuel";
+"sub.semiannual" = "Semestriel";
+"sub.lifetime" = "À vie";
+"sub.popular" = "Populaire";
+"sub.bestprice" = "Meilleur prix";
+"sub.continue" = "Continuer";
+"sub.restore" = "Restaurer les achats";
+"sub.onetime" = "Paiement unique";
+
+// Common
+"common.save" = "Enregistrer";
+"common.cancel" = "Annuler";
+"common.done" = "Terminé";
+"common.delete" = "Supprimer";
+"common.edit" = "Modifier";
+"common.retry" = "Réessayer";
+"common.error" = "Erreur";
+"common.loading" = "Chargement...";
+"common.search" = "Rechercher";
+"common.enter" = "Saisissez";
+"common.select" = "Sélectionner";
+"common.connection_error" = "Erreur de connexion";
+"common.check_internet" = "Vérifiez votre connexion internet";
+"common.tap_retry" = "Appuyez pour réessayer";
+
+// Auth
+"auth.login" = "Se connecter";
+"auth.register" = "S'inscrire";
+"auth.email" = "Adresse e-mail";
+"auth.password" = "Mot de passe";
+"auth.forgot" = "Mot de passe oublié ?";
+
+// FaceID Lock
+"faceid.locked" = "Nexus est verrouillé";
+"faceid.unlock" = "Déverrouiller";
+"faceid.use" = "Utilisez Face ID pour accéder";
+
+// Notifications
+"notif.morning" = "Bonjour";
+"notif.morning.body" = "Votre briefing quotidien est prêt. Consultez votre programme du jour.";
+"notif.finance" = "Finances";
+"notif.finance.body" = "N'oubliez pas de noter vos dépenses du jour.";
+"notif.health" = "Santé";
+"notif.health.body" = "Consultez vos indicateurs de santé de la semaine.";
+
+// Auth screen
+"auth.google" = "Se connecter avec Google";
+"auth.email_login" = "Se connecter par Email";
+"auth.or" = "ou";
+"auth.phone" = "Numéro de téléphone";
+"auth.no_account" = "Pas de compte?";
+"auth.signup_action" = "S'inscrire";
+"auth.create" = "Créer un compte";
+"auth.confirm" = "Confirmer";
+"auth.resend" = "Renvoyer";
+"auth.code_sent" = "Code envoyé à";
+"auth.check_email" = "Vérifiez votre email et entrez le code.";
+
+"health.activity" = "Activité";
+"health.weekly.steps" = "Pas hebdomadaires";
+"health.sleep.excellent" = "Excellent";
+"health.sleep.normal" = "Normal";
+"health.sleep.poor" = "Peu";
+"health.burned" = "kcal brûlées";
+"health.weight" = "Poids";
+"health.bloodpressure" = "Tension artérielle";
+"health.oxygen" = "Oxygène";
+"health.bpm" = "bpm";
+"health.hour" = "h";
+"health.mmhg" = "mmHg";
+"health.min.label" = "Min";
+"health.max.label" = "Max";
+"health.goal.steps" = "Objectif: 10 000";
+"health.goal.water" = "Objectif: 2 000 ml";
+"health.goal.activity" = "Objectif: 30 min";
+"weekday.mon" = "Lun";
+"weekday.tue" = "Mar";
+"weekday.wed" = "Mer";
+"weekday.thu" = "Jeu";
+"weekday.fri" = "Ven";
+"weekday.sat" = "Sam";
+"weekday.sun" = "Dim";
+"finance.personal" = "Personnel";
+"finance.business" = "Affaires";
+"finance.balance.label" = "Solde";
+"finance.budget.categories" = "Budget par catégories";
+"finance.filter" = "Filtre";
+"finance.no.transactions" = "Aucune transaction";
+"finance.add" = "Ajouter";
+"finance.edit.transaction" = "Modifier";
+"finance.new.transaction" = "Nouvelle transaction";
+"finance.amount" = "Montant";
+"finance.expense.label" = "Dépense";
+"finance.income.label" = "Revenu";
+"finance.name" = "Nom";
+"finance.category" = "Catégorie";
+"finance.subcategory" = "Sous-catégorie";
+"finance.source" = "Source";
+"finance.date" = "Date";
+"finance.delete.transaction" = "Supprimer la transaction";
+"finance.of" = "sur";
+"finance.show.more" = "Voir plus";
+"finance.collapse" = "Réduire";
+"finance.what" = "Qu'est-ce que c'est ?";
+"finance.reset" = "Réinitialiser";
+"finance.categories.label" = "Catégories";
+"learning.subtitle" = "Continuez à grandir";
+"learning.today" = "Aujourd'hui";
+"learning.courses" = "Cours";
+"learning.weekly" = "Activité hebdomadaire";
+"ai.agent" = "Agent :";
+"ai.info.title" = "Comment fonctionne l'IA";
+"ai.history.title" = "Historique des chats";
+"ai.history.empty" = "Pas encore d'historique. Commencez une nouvelle conversation.";
+"ai.ok" = "Compris";
+"ai.placeholder" = "Message...";
+"ai.send" = "Envoyer";
+"settings.subscription.subtitle" = "IA illimitée, analytique, notifications";
+"settings.stat.days" = "Jours dans l'app";
+"settings.stat.ai" = "Sessions IA";
+"settings.stat.health" = "Enregistrements santé";
+"settings.stat.since" = "depuis l'inscription";
+"settings.stat.total" = "total";
+"settings.stat.alltime" = "de tout le temps";
+"settings.show.more" = "Voir plus";
+"settings.collapse" = "Réduire";
+"settings.categories" = "Catégories";
+"settings.signout.confirm" = "Voulez-vous vraiment vous déconnecter ?";
+"settings.language.restart" = "Redémarrer l'app";
+"settings.language.restart.msg" = "Le changement de langue prendra pleinement effet après le redémarrage de l'app.";
+"settings.language.later" = "Plus tard";

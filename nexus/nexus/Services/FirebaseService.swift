@@ -18,6 +18,8 @@ final class FirebaseService: ObservableObject {
     let userRepo: UserRepository
     let healthRepo: HealthRepository
     let chatRepo: ChatRepository
+    let financeRepo: FinanceRepository
+    let learningRepo: LearningRepository
 
     // Current user ID from Firebase Auth
     @Published var currentUserId: String?
@@ -26,6 +28,8 @@ final class FirebaseService: ObservableObject {
         self.userRepo = FirebaseUserRepository()
         self.healthRepo = FirebaseHealthRepository()
         self.chatRepo = FirebaseChatRepository()
+        self.financeRepo = FirebaseFinanceRepository()
+        self.learningRepo = FirebaseLearningRepository()
 
         #if canImport(FirebaseAuth)
         setupAuthListener()

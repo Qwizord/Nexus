@@ -1,1 +1,214 @@
+/* Japanese — Localizable.strings */
 
+// Tabs
+"tab.health" = "ヘルスケア";
+"tab.finance" = "ファイナンス";
+"tab.ai" = "AI";
+"tab.learning" = "学習";
+"tab.settings" = "設定";
+
+// Settings
+"settings.title" = "設定";
+"settings.stats" = "統計";
+"settings.integrations" = "連携";
+"settings.security" = "セキュリティと外観";
+"settings.theme" = "テーマ";
+"settings.language" = "言語";
+"settings.notifications" = "通知";
+"settings.faceid" = "Face ID / Touch ID";
+"settings.signout" = "ログアウト";
+"settings.rate" = "Nexusを評価する";
+"settings.support" = "サポート";
+"settings.feedback" = "フィードバック";
+"settings.cache" = "キャッシュを削除";
+"settings.privacy" = "プライバシーポリシー";
+"settings.terms" = "利用規約";
+
+// Profile
+"profile.title" = "プロフィール";
+"profile.firstname" = "名前";
+"profile.middlename" = "ミドルネーム";
+"profile.lastname" = "姓";
+"profile.bio" = "自己紹介";
+"profile.height" = "身長";
+"profile.weight" = "体重";
+"profile.gender" = "性別";
+"profile.birthdate" = "生年月日";
+"profile.country" = "国";
+"profile.city" = "都市";
+
+// Finance
+"finance.income" = "収入";
+"finance.expense" = "支出";
+"finance.balance" = "残高";
+"finance.debt" = "負債";
+"finance.investments" = "投資";
+"finance.transactions" = "取引履歴";
+"finance.nodata" = "この期間の取引はありません";
+
+// Health
+"health.steps" = "歩数";
+"health.sleep" = "睡眠";
+"health.heartrate" = "心拍数";
+"health.calories" = "カロリー";
+"health.water" = "水分";
+
+// AI
+"ai.title" = "AIアシスタント";
+"ai.newchat" = "新しいチャット";
+"ai.history" = "履歴";
+"ai.typing" = "入力中...";
+"ai.copy" = "すべてコピー";
+
+// Subscription
+"sub.title" = "Nexus Pro";
+"sub.monthly" = "月額";
+"sub.semiannual" = "半年";
+"sub.lifetime" = "買い切り";
+"sub.popular" = "人気";
+"sub.bestprice" = "お得なプラン";
+"sub.continue" = "続ける";
+"sub.restore" = "購入を復元";
+
+// Common
+"common.save" = "保存";
+"common.cancel" = "キャンセル";
+"common.done" = "完了";
+"common.delete" = "削除";
+"common.retry" = "再試行";
+"common.error" = "エラー";
+"common.loading" = "読み込み中...";
+"common.search" = "検索";
+"common.connection_error" = "接続エラー";
+"common.check_internet" = "インターネット接続を確認してください";
+"common.tap_retry" = "タップして再試行";
+
+// Auth
+"auth.login" = "ログイン";
+"auth.register" = "新規登録";
+"auth.email" = "メールアドレス";
+"auth.password" = "パスワード";
+"auth.forgot" = "パスワードをお忘れですか？";
+
+// FaceID Lock
+"faceid.locked" = "Nexusはロックされています";
+"faceid.unlock" = "ロック解除";
+"faceid.use" = "Face IDでロックを解除";
+
+// Additional keys
+"settings.stats.detail" = "詳細";
+"settings.units" = "単位";
+"settings.currency" = "通貨";
+"settings.spotlight" = "Spotlight";
+"settings.account" = "アカウント";
+"settings.version" = "バージョン";
+"settings.share" = "共有";
+"settings.faq" = "FAQ";
+"settings.changelog" = "変更履歴";
+"profile.username" = "ユーザー名";
+"profile.race" = "人種";
+"profile.ethnicity" = "民族";
+"profile.diet" = "食事タイプ";
+"profile.marital" = "配偶者の有無";
+"profile.about" = "自己紹介";
+"finance.title" = "ファイナンス";
+"finance.budget" = "予算";
+"health.title" = "ヘルス";
+"sub.subtitle" = "アプリの全機能を解放";
+"sub.onetime" = "一括払い";
+"common.edit" = "編集";
+"common.enter" = "入力";
+"common.select" = "選択";
+"notif.morning" = "おはようございます";
+"notif.morning.body" = "今日のブリーフィングの準備ができました。";
+"notif.finance" = "ファイナンス";
+"notif.finance.body" = "今日の支出を記録しましょう。";
+"notif.health" = "ヘルス";
+"notif.health.body" = "今週の健康指標を確認しましょう。";
+
+// Auth screen
+"auth.google" = "Googleでサインイン";
+"auth.email_login" = "メールでサインイン";
+"auth.or" = "または";
+"auth.phone" = "電話番号";
+"auth.no_account" = "アカウントがない？";
+"auth.signup_action" = "登録する";
+"auth.create" = "アカウント作成";
+"auth.confirm" = "確認";
+"auth.resend" = "再送信";
+"auth.code_sent" = "コードを送信しました";
+"auth.check_email" = "メールを確認してコードを入力してください。";
+
+"health.activity" = "活動";
+"health.weekly.steps" = "週間歩数";
+"health.sleep.excellent" = "優秀";
+"health.sleep.normal" = "普通";
+"health.sleep.poor" = "不足";
+"health.burned" = "kcal消費";
+"health.weight" = "体重";
+"health.bloodpressure" = "血圧";
+"health.oxygen" = "血中酸素";
+"health.bpm" = "拍/分";
+"health.hour" = "時間";
+"health.mmhg" = "mmHg";
+"health.min.label" = "最小";
+"health.max.label" = "最大";
+"health.goal.steps" = "目標：10,000";
+"health.goal.water" = "目標：2,000 ml";
+"health.goal.activity" = "目標：30分";
+"weekday.mon" = "月";
+"weekday.tue" = "火";
+"weekday.wed" = "水";
+"weekday.thu" = "木";
+"weekday.fri" = "金";
+"weekday.sat" = "土";
+"weekday.sun" = "日";
+"finance.personal" = "個人";
+"finance.business" = "ビジネス";
+"finance.balance.label" = "残高";
+"finance.budget.categories" = "カテゴリ別予算";
+"finance.filter" = "フィルター";
+"finance.no.transactions" = "取引なし";
+"finance.add" = "追加";
+"finance.edit.transaction" = "編集";
+"finance.new.transaction" = "新規取引";
+"finance.amount" = "金額";
+"finance.expense.label" = "支出";
+"finance.income.label" = "収入";
+"finance.name" = "名前";
+"finance.category" = "カテゴリ";
+"finance.subcategory" = "サブカテゴリ";
+"finance.source" = "ソース";
+"finance.date" = "日付";
+"finance.delete.transaction" = "取引を削除";
+"finance.of" = "/";
+"finance.show.more" = "もっと見る";
+"finance.collapse" = "折りたたむ";
+"finance.what" = "これは何？";
+"finance.reset" = "リセット";
+"finance.categories.label" = "カテゴリ";
+"learning.subtitle" = "成長し続けよう";
+"learning.today" = "今日";
+"learning.courses" = "コース";
+"learning.weekly" = "週間アクティビティ";
+"ai.agent" = "エージェント:";
+"ai.info.title" = "AIの仕組み";
+"ai.history.title" = "チャット履歴";
+"ai.history.empty" = "まだ履歴がありません。新しい会話を始めましょう。";
+"ai.ok" = "わかった";
+"ai.placeholder" = "メッセージ...";
+"ai.send" = "送信";
+"settings.subscription.subtitle" = "無制限AI、分析、通知";
+"settings.stat.days" = "アプリ使用日数";
+"settings.stat.ai" = "AIセッション";
+"settings.stat.health" = "健康記録";
+"settings.stat.since" = "登録からの日数";
+"settings.stat.total" = "合計";
+"settings.stat.alltime" = "全期間";
+"settings.show.more" = "もっと見る";
+"settings.collapse" = "折りたたむ";
+"settings.categories" = "カテゴリ";
+"settings.signout.confirm" = "ログアウトしてもよろしいですか？";
+"settings.language.restart" = "アプリを再起動";
+"settings.language.restart.msg" = "言語変更はアプリの再起動後に完全に反映されます。";
+"settings.language.later" = "後で";

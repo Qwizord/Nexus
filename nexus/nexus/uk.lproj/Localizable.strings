@@ -1,1 +1,212 @@
+/* Tabs */
+"tab.health" = "Здоров'я";
+"tab.finance" = "Фінанси";
+"tab.ai" = "ШІ";
+"tab.learning" = "Навчання";
+"tab.settings" = "Налаштування";
 
+/* Settings */
+"settings.title" = "Налаштування";
+"settings.stats" = "Статистика";
+"settings.integrations" = "Інтеграції";
+"settings.security" = "Безпека та оформлення";
+"settings.theme" = "Тема";
+"settings.language" = "Мова";
+"settings.notifications" = "Сповіщення";
+"settings.faceid" = "Face ID / Touch ID";
+"settings.signout" = "Вийти";
+"settings.rate" = "Оцінити Nexus";
+"settings.support" = "Підтримка";
+"settings.feedback" = "Зворотний зв'язок";
+"settings.cache" = "Очистити кеш";
+"settings.privacy" = "Політика конфіденційності";
+"settings.terms" = "Умови використання";
+
+/* Profile */
+"profile.title" = "Профіль";
+"profile.firstname" = "Ім'я";
+"profile.middlename" = "По батькові";
+"profile.lastname" = "Прізвище";
+"profile.bio" = "Біографія";
+"profile.height" = "Зріст";
+"profile.weight" = "Вага";
+"profile.gender" = "Стать";
+"profile.birthdate" = "Дата народження";
+"profile.country" = "Країна";
+"profile.city" = "Місто";
+
+/* Finance */
+"finance.income" = "Дохід";
+"finance.expense" = "Витрати";
+"finance.balance" = "Баланс";
+"finance.debt" = "Борги";
+"finance.investments" = "Інвестиції";
+"finance.transactions" = "Транзакції";
+"finance.nodata" = "Немає операцій за цей період";
+
+/* Health */
+"health.steps" = "Кроки";
+"health.sleep" = "Сон";
+"health.heartrate" = "Пульс";
+"health.calories" = "Калорії";
+"health.water" = "Вода";
+
+/* AI Assistant */
+"ai.title" = "ШІ-асистент";
+"ai.newchat" = "Новий чат";
+"ai.history" = "Історія";
+"ai.typing" = "Друкує...";
+"ai.copy" = "Копіювати все";
+
+/* Subscription */
+"sub.title" = "Nexus Pro";
+"sub.monthly" = "Щомісяця";
+"sub.semiannual" = "Півроку";
+"sub.lifetime" = "Назавжди";
+"sub.popular" = "Популярний";
+"sub.bestprice" = "Найкраща ціна";
+"sub.continue" = "Продовжити";
+"sub.restore" = "Відновити покупки";
+
+/* Common */
+"common.save" = "Зберегти";
+"common.cancel" = "Скасувати";
+"common.done" = "Готово";
+"common.delete" = "Видалити";
+"common.retry" = "Повторити";
+"common.error" = "Помилка";
+"common.loading" = "Завантаження...";
+"common.search" = "Пошук";
+"common.connection_error" = "Помилка з'єднання";
+"common.check_internet" = "Перевірте підключення до інтернету";
+"common.tap_retry" = "Натисніть для повтору";
+
+/* Auth */
+"auth.login" = "Увійти";
+"auth.register" = "Реєстрація";
+"auth.email" = "Електронна пошта";
+"auth.password" = "Пароль";
+"auth.forgot" = "Забули пароль?";
+
+/* Face ID */
+"faceid.locked" = "Nexus заблоковано";
+"faceid.unlock" = "Розблокувати";
+"faceid.use" = "Використайте Face ID для розблокування";
+
+// Additional keys
+"settings.stats.detail" = "Детальніше";
+"settings.units" = "Одиниці";
+"settings.currency" = "Валюта";
+"settings.spotlight" = "Spotlight";
+"settings.account" = "Обліковий запис";
+"settings.version" = "Версія";
+"settings.share" = "Поділитися";
+"settings.faq" = "FAQ";
+"settings.changelog" = "Журнал змін";
+"profile.username" = "Ім'я користувача";
+"profile.race" = "Раса";
+"profile.ethnicity" = "Етнос / Національність";
+"profile.diet" = "Тип харчування";
+"profile.marital" = "Сімейний стан";
+"profile.about" = "Про мене";
+"finance.title" = "Фінанси";
+"finance.budget" = "Бюджет";
+"health.title" = "Здоров'я";
+"sub.subtitle" = "Розкрийте весь потенціал застосунку";
+"sub.onetime" = "Одноразовий платіж";
+"common.edit" = "Редагувати";
+"common.enter" = "Введіть";
+"common.select" = "Обрати";
+"notif.morning" = "Доброго ранку";
+"notif.morning.body" = "Ваш щоденний брифінг готовий.";
+"notif.finance" = "Фінанси";
+"notif.finance.body" = "Не забудьте записати витрати за сьогодні.";
+"notif.health" = "Здоров'я";
+"notif.health.body" = "Перевірте свої показники здоров'я цього тижня.";
+
+// Auth screen
+"auth.google" = "Увійти через Google";
+"auth.email_login" = "Увійти через Email";
+"auth.or" = "або";
+"auth.phone" = "Номер телефону";
+"auth.no_account" = "Немає акаунту?";
+"auth.signup_action" = "Зареєструватися";
+"auth.create" = "Створити акаунт";
+"auth.confirm" = "Підтвердити";
+"auth.resend" = "Надіслати знову";
+"auth.code_sent" = "Код надіслано на";
+"auth.check_email" = "Перевірте пошту та введіть код з листа.";
+
+"health.activity" = "Активність";
+"health.weekly.steps" = "Кроки за тиждень";
+"health.sleep.excellent" = "Чудово";
+"health.sleep.normal" = "Нормально";
+"health.sleep.poor" = "Мало";
+"health.burned" = "ккал спалено";
+"health.weight" = "Вага";
+"health.bloodpressure" = "Тиск";
+"health.oxygen" = "Кисень";
+"health.bpm" = "уд/хв";
+"health.hour" = "г";
+"health.mmhg" = "мм рт.ст.";
+"health.min.label" = "Мін";
+"health.max.label" = "Макс";
+"health.goal.steps" = "Ціль: 10 000";
+"health.goal.water" = "Ціль: 2 000 мл";
+"health.goal.activity" = "Ціль: 30 хв";
+"weekday.mon" = "Пн";
+"weekday.tue" = "Вт";
+"weekday.wed" = "Ср";
+"weekday.thu" = "Чт";
+"weekday.fri" = "Пт";
+"weekday.sat" = "Сб";
+"weekday.sun" = "Нд";
+"finance.personal" = "Особисті";
+"finance.business" = "Бізнес";
+"finance.balance.label" = "Залишок";
+"finance.budget.categories" = "Бюджет за категоріями";
+"finance.filter" = "Фільтр";
+"finance.no.transactions" = "Немає операцій";
+"finance.add" = "Додати";
+"finance.edit.transaction" = "Редагувати";
+"finance.new.transaction" = "Нова операція";
+"finance.amount" = "Сума";
+"finance.expense.label" = "Витрати";
+"finance.income.label" = "Дохід";
+"finance.name" = "Назва";
+"finance.category" = "Категорія";
+"finance.subcategory" = "Підкатегорія";
+"finance.source" = "Джерело";
+"finance.date" = "Дата";
+"finance.delete.transaction" = "Видалити операцію";
+"finance.of" = "з";
+"finance.show.more" = "Показати ще";
+"finance.collapse" = "Сховати";
+"finance.what" = "Що це?";
+"finance.reset" = "Скинути";
+"finance.categories.label" = "Категорії";
+"learning.subtitle" = "Продовжуй зростати";
+"learning.today" = "Сьогодні";
+"learning.courses" = "Курси";
+"learning.weekly" = "Активність за тиждень";
+"ai.agent" = "Агент:";
+"ai.info.title" = "Як працює AI";
+"ai.history.title" = "Історія чатів";
+"ai.history.empty" = "Ще немає історії. Розпочни новий діалог.";
+"ai.ok" = "Зрозуміло";
+"ai.placeholder" = "Повідомлення...";
+"ai.send" = "Надіслати";
+"settings.subscription.subtitle" = "Безлімітний AI, аналітика, сповіщення";
+"settings.stat.days" = "Днів у додатку";
+"settings.stat.ai" = "Сесій AI";
+"settings.stat.health" = "Записів здоров'я";
+"settings.stat.since" = "з моменту реєстрації";
+"settings.stat.total" = "створено всього";
+"settings.stat.alltime" = "за весь час";
+"settings.show.more" = "Показати ще";
+"settings.collapse" = "Сховати";
+"settings.categories" = "Категорії";
+"settings.signout.confirm" = "Ви впевнені, що хочете вийти?";
+"settings.language.restart" = "Перезапустити додаток";
+"settings.language.restart.msg" = "Зміна мови повністю набуде чинності після перезапуску додатку.";
+"settings.language.later" = "Пізніше";

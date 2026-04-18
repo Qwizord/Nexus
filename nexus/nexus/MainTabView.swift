@@ -8,51 +8,29 @@ struct MainTabView: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
+        // appState.settings.language меняется → body пересчитывается → L() возвращает новый язык
+        let lang = appState.settings.language
+
         TabView {
             HealthView()
                 .tabItem {
-                    VStack(spacing: 3) {
-                        Image(systemName: "heart.fill")
-                            .font(.system(size: 20, weight: .semibold))
-                        Text("Здоровье")
-                            .font(.system(size: 12, weight: .medium))
-                    }
+                    Label(L("tab.health"), systemImage: "heart.fill")
                 }
             FinanceView()
                 .tabItem {
-                    VStack(spacing: 3) {
-                        Image(systemName: "chart.line.uptrend.xyaxis")
-                            .font(.system(size: 20, weight: .semibold))
-                        Text("Финансы")
-                            .font(.system(size: 12, weight: .medium))
-                    }
+                    Label(L("tab.finance"), systemImage: "chart.line.uptrend.xyaxis")
                 }
             LearningView()
                 .tabItem {
-                    VStack(spacing: 3) {
-                        Image(systemName: "brain.head.profile")
-                            .font(.system(size: 20, weight: .semibold))
-                        Text("Обучение")
-                            .font(.system(size: 12, weight: .medium))
-                    }
+                    Label(L("tab.learning"), systemImage: "brain.head.profile")
                 }
             AIAssistantView()
                 .tabItem {
-                    VStack(spacing: 3) {
-                        Image(systemName: "sparkles")
-                            .font(.system(size: 20, weight: .semibold))
-                        Text("AI")
-                            .font(.system(size: 12, weight: .medium))
-                    }
+                    Label(L("tab.ai"), systemImage: "sparkles")
                 }
             SettingsView()
                 .tabItem {
-                    VStack(spacing: 3) {
-                        Image(systemName: "gearshape.fill")
-                            .font(.system(size: 20, weight: .semibold))
-                        Text("Настройки")
-                            .font(.system(size: 12, weight: .medium))
-                    }
+                    Label(L("tab.settings"), systemImage: "gearshape.fill")
                 }
         }
         .tabViewStyle(.automatic)
@@ -62,6 +40,7 @@ struct MainTabView: View {
         .environment(\.dynamicTypeSize, .small)
         .onAppear { configureTabBarAppearance(for: colorScheme) }
         .onChange(of: colorScheme) { _, new in configureTabBarAppearance(for: new) }
+        .onChange(of: lang) { _, _ in configureTabBarAppearance(for: colorScheme) }
     }
 
     private var tabBarSurfaceColor: Color {

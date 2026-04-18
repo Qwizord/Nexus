@@ -1,5 +1,7 @@
 import SwiftUI
+import Combine
 import AuthenticationServices
+import UIKit
 #if canImport(FirebaseAuth)
 import FirebaseAuth
 #endif
@@ -118,23 +120,290 @@ private struct AuthSheetHeader: View {
                 .buttonStyle(.plain)
             }
             .padding(.horizontal, 20)
-            .padding(.top, 16)
+            .padding(.top, 20)
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .center, spacing: 4) {
                 Text(title)
                     .font(.system(size: 30, weight: .bold, design: .rounded))
                     .foregroundStyle(AuthPalette.primary(colorScheme))
+                    .multilineTextAlignment(.center)
                 Text(subtitle)
                     .font(.system(size: 15))
                     .foregroundStyle(AuthPalette.secondary(colorScheme))
+                    .multilineTextAlignment(.center)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .center)
             .padding(.horizontal, 24)
-            .padding(.top, 14)
+            .padding(.top, 4)
             .padding(.bottom, 16)
         }
     }
 }
+
+// MARK: - Typewriter View
+
+private struct TypewriterText: View {
+    let phrases: [String]
+    @Environment(\.colorScheme) private var colorScheme
+
+    @State private var displayed = ""
+    @State private var phraseIndex: Int
+    @State private var charIndex = 0
+    @State private var isDeleting = false
+    @State private var cursorVisible = true
+    @State private var timer: Timer?
+    @State private var cursorTimer: Timer?
+
+    private let typeSpeed: TimeInterval = 0.055
+    private let deleteSpeed: TimeInterval = 0.03
+    private let pauseAfterType: TimeInterval = 1.8
+    private let pauseAfterDelete: TimeInterval = 0.4
+
+    init(phrases: [String]) {
+        self.phrases = phrases
+        _phraseIndex = State(initialValue: Int.random(in: 0..<phrases.count))
+    }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Text(displayed)
+                .font(.system(size: 16))
+                .foregroundStyle(AuthPalette.secondary(colorScheme))
+            Rectangle()
+                .fill(AuthPalette.primary(colorScheme).opacity(0.65))
+                .frame(width: 2.4, height: 18)
+                .opacity(cursorVisible ? 1 : 0)
+                .animation(.easeInOut(duration: 0.4), value: cursorVisible)
+        }
+        .onAppear { startCursor(); scheduleNext(delay: 0.5) }
+        .onDisappear { timer?.invalidate(); cursorTimer?.invalidate() }
+    }
+
+    private func startCursor() {
+        cursorTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
+            cursorVisible.toggle()
+        }
+    }
+
+    private func scheduleNext(delay: TimeInterval) {
+        timer?.invalidate()
+        timer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { _ in
+            tick()
+        }
+    }
+
+    private func tick() {
+        let phrase = phrases[phraseIndex]
+        if !isDeleting {
+            if charIndex < phrase.count {
+                charIndex += 1
+                displayed = String(phrase.prefix(charIndex))
+                scheduleNext(delay: typeSpeed)
+            } else {
+                isDeleting = true
+                scheduleNext(delay: pauseAfterType)
+            }
+        } else {
+            if charIndex > 0 {
+                charIndex -= 1
+                displayed = String(phrase.prefix(charIndex))
+                scheduleNext(delay: deleteSpeed)
+            } else {
+                isDeleting = false
+                phraseIndex = (phraseIndex + 1) % phrases.count
+                scheduleNext(delay: pauseAfterDelete)
+            }
+        }
+    }
+}
+
+// MARK: - Auth Animated Background
+
+private struct AuthBackgroundView: View {
+    let theme: AppTheme
+    var body: some View {
+        FlameBackground(forceScheme: theme == .dark ? .dark : .light)
+            .ignoresSafeArea()
+    }
+}
+
+
+// MARK: - iOS 18 MeshGradient
+
+@available(iOS 18.0, *)
+private struct MeshBackground: View {
+    let isDark: Bool
+    @State private var flipped = false
+
+    // Точки A и B — MeshGradient анимирует между ними через withAnimation
+    private let pointsA: [SIMD2<Float>] = [
+        [0.0, 0.0], [0.5,  0.0], [1.0, 0.0],
+        [0.0, 0.5], [0.55, 0.42], [1.0, 0.5],
+        [0.0, 1.0], [0.5,  1.0], [1.0, 1.0],
+    ]
+    private let pointsB: [SIMD2<Float>] = [
+        [0.0, 0.0], [0.44, 0.0], [1.0, 0.0],
+        [0.0, 0.5], [0.40, 0.60], [1.0, 0.5],
+        [0.0, 1.0], [0.58, 1.0], [1.0, 1.0],
+    ]
+
+    // Тёмные синие цвета
+    private let darkColors: [Color] = [
+        Color(red: 0.02, green: 0.02, blue: 0.12),   // TL — почти чёрный синий
+        Color(red: 0.05, green: 0.08, blue: 0.35),   // TC — тёмный синий
+        Color(red: 0.02, green: 0.02, blue: 0.10),   // TR
+        Color(red: 0.04, green: 0.06, blue: 0.28),   // ML
+        Color(red: 0.10, green: 0.18, blue: 0.65),   // MC — яркий синий акцент
+        Color(red: 0.03, green: 0.04, blue: 0.20),   // MR
+        Color(red: 0.02, green: 0.02, blue: 0.08),   // BL
+        Color(red: 0.06, green: 0.10, blue: 0.38),   // BC
+        Color(red: 0.02, green: 0.02, blue: 0.10),   // BR
+    ]
+
+    // Светлые цвета — более явные синие оттенки
+    private let lightColors: [Color] = [
+        Color(red: 0.78, green: 0.84, blue: 1.00),
+        Color(red: 0.55, green: 0.65, blue: 0.97),
+        Color(red: 0.85, green: 0.90, blue: 1.00),
+        Color(red: 0.62, green: 0.72, blue: 0.98),
+        Color(red: 0.90, green: 0.94, blue: 1.00),
+        Color(red: 0.58, green: 0.68, blue: 0.97),
+        Color(red: 0.80, green: 0.87, blue: 1.00),
+        Color(red: 0.60, green: 0.70, blue: 0.97),
+        Color(red: 0.86, green: 0.92, blue: 1.00),
+    ]
+
+    var body: some View {
+        MeshGradient(
+            width: 3, height: 3,
+            points: flipped ? pointsB : pointsA,
+            colors: isDark ? darkColors : lightColors,
+            smoothsColors: true
+        )
+        .onAppear {
+            withAnimation(
+                .easeInOut(duration: 4.0)
+                .repeatForever(autoreverses: true)
+            ) {
+                flipped = true
+            }
+        }
+    }
+}
+
+// MARK: - Fallback iOS 17
+
+private struct MeshBackgroundFallback: View {
+    let isDark: Bool
+    @State private var t: Double = 0
+    private let timer = Timer.publish(every: 1.0 / 24.0, on: .main, in: .common).autoconnect()
+
+    var body: some View {
+        Canvas(opaque: true) { ctx, size in
+            ctx.fill(Path(CGRect(origin: .zero, size: size)),
+                     with: .color(isDark ? Color(red:0.02,green:0.02,blue:0.12) : Color(red:0.90,green:0.93,blue:1.00)))
+            let blobs: [(Double,Double,Double, Double,Double, Double,Double, Double,Double)] = isDark
+            ? [
+                (0.10,0.18,0.65, 0.14,0.11, 0.0,0.0, 0.32,0.38),
+                (0.05,0.10,0.42, 0.09,0.13, 2.1,1.4, 0.40,0.28),
+                (0.08,0.14,0.55, 0.11,0.08, 4.2,3.0, 0.26,0.42),
+                (0.04,0.07,0.32, 0.07,0.12, 1.5,5.3, 0.44,0.24),
+              ]
+            : [
+                (0.72,0.78,0.98, 0.14,0.11, 0.0,0.0, 0.32,0.38),
+                (0.78,0.84,0.99, 0.09,0.13, 2.1,1.4, 0.40,0.28),
+                (0.74,0.80,0.98, 0.11,0.08, 4.2,3.0, 0.26,0.42),
+                (0.80,0.86,0.99, 0.07,0.12, 1.5,5.3, 0.44,0.24),
+              ]
+            for (r,g,b,xF,yF,xP,yP,xA,yA) in blobs {
+                let cx = size.width  * (0.5 + xA * sin(t * xF + xP))
+                let cy = size.height * (0.5 + yA * cos(t * yF + yP))
+                let rad = max(size.width, size.height) * 0.72
+                let grad = Gradient(stops: [
+                    .init(color: Color(red:r,green:g,blue:b).opacity(isDark ? 0.90 : 0.65), location: 0),
+                    .init(color: Color(red:r,green:g,blue:b).opacity(0.20), location: 0.55),
+                    .init(color: .clear, location: 1),
+                ])
+                var bCtx = ctx; bCtx.blendMode = isDark ? .screen : .multiply
+                bCtx.fill(
+                    Path(ellipseIn: CGRect(x:cx-rad,y:cy-rad,width:rad*2,height:rad*2)),
+                    with: .radialGradient(grad, center:.init(x:cx,y:cy), startRadius:0, endRadius:rad)
+                )
+            }
+        }
+        .onReceive(timer) { _ in t += 1.0 / 24.0 }
+    }
+}
+
+// MARK: - Animated Grain (быстро мелькающий шум)
+
+private struct AnimatedGrainOverlay: View {
+    let isDark: Bool
+
+    // Тёмные кадры для тёмной темы (белые пиксели → .overlay)
+    private static let darkFrames: [UIImage] = makeFrames(light: false)
+    // Тёмные пиксели для светлой темы (чёрные пиксели → .multiply даёт тёмный шум)
+    private static let lightFrames: [UIImage] = makeFrames(light: true)
+
+    private static func makeFrames(light: Bool) -> [UIImage] {
+        (0..<6).map { seed in
+            let side = 128
+            UIGraphicsBeginImageContextWithOptions(.init(width: side, height: side), false, 1)
+            let ctx = UIGraphicsGetCurrentContext()!
+            var s = UInt64(bitPattern: Int64(seed &* 2654435761 &+ 1013904223)) | 1
+            for y in 0..<side {
+                for x in 0..<side {
+                    s ^= s << 13; s ^= s >> 7; s ^= s << 17
+                    let v = CGFloat(s & 0xff) / 255.0
+                    if light {
+                        // Светлая тема: только тёмные пиксели, высокая альфа
+                        let a = (1.0 - v) * (1.0 - v) * 0.55
+                        ctx.setFillColor(UIColor(white: 0, alpha: a).cgColor)
+                    } else {
+                        // Тёмная тема: белые и чёрные пиксели
+                        let a = v * v * 0.50
+                        ctx.setFillColor(UIColor(white: v > 0.5 ? 1 : 0, alpha: a).cgColor)
+                    }
+                    ctx.fill(.init(x: x, y: y, width: 1, height: 1))
+                }
+            }
+            let img = UIGraphicsGetImageFromCurrentImageContext()!
+            UIGraphicsEndImageContext()
+            return img
+        }
+    }
+
+    @State private var frameIndex = 0
+    private let timer = Timer.publish(every: 1.0 / 20.0, on: .main, in: .common).autoconnect()
+
+    var body: some View {
+        Image(uiImage: isDark ? Self.darkFrames[frameIndex] : Self.lightFrames[frameIndex])
+            .resizable(resizingMode: .tile)
+            .blendMode(isDark ? .overlay : .multiply)
+            .opacity(isDark ? 0.32 : 0.45)
+            .allowsHitTesting(false)
+            .onReceive(timer) { _ in
+                frameIndex = (frameIndex + 1) % 6
+            }
+    }
+}
+
+// MARK: - Phrases
+
+private let authPhrases: [String] = [
+    "Твой AI-ассистент для роста",
+    "Здоровье, финансы, обучение — всё здесь",
+    "Достигай целей вместе с AI",
+    "Умный трекер твоей жизни",
+    "Один помощник для всего важного",
+    "Анализируй, планируй, достигай",
+    "Твой личный коуч в кармане",
+    "AI который знает тебя лучше всех",
+    "Прокачивай себя каждый день",
+    "Nexus — точка роста твоей жизни",
+]
+
+// MARK: - AuthView
 
 struct AuthView: View {
     @EnvironmentObject private var appState: AppState
@@ -144,6 +413,7 @@ struct AuthView: View {
     @State private var password = ""
     @State private var showRegistration = false
     @State private var showPhoneSheet = false
+    @State private var showEmailPassword = false
     @State private var phoneNumber = ""
     @State private var countryCode = "+7"
     @State private var previousPhoneValue = ""
@@ -160,6 +430,9 @@ struct AuthView: View {
 
     var body: some View {
         ZStack {
+            // Фон читает тему из appState напрямую — не зависит от colorScheme
+            AuthBackgroundView(theme: appState.settings.theme)
+
             Group {
                 if verticalSizeClass == .compact {
                     GeometryReader { geo in
@@ -172,9 +445,11 @@ struct AuthView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     authContent
+                        .ignoresSafeArea(.keyboard)
                 }
             }
         }
+        .tint(colorScheme == .dark ? .white : Color(red: 0.11, green: 0.11, blue: 0.14))
         .dismissKeyboardOnTap()
         .onAppear {
             let stored = appState.settings.language
@@ -184,29 +459,41 @@ struct AuthView: View {
             countryCode = defaultCountry.code
         }
         .onChange(of: selectedLanguageId) { _, newValue in
-            appState.settings.language = newValue
             let defaultCountry = defaultCountryOption(for: newValue)
             selectedCountryId = defaultCountry.id
             countryCode = defaultCountry.code
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                appState.settings.language = newValue
+            }
         }
         .sheet(isPresented: $showPhoneSheet) {
             phoneSheet
-                .presentationDetents([.medium])
+                .tint(colorScheme == .dark ? .white : Color(red: 0.11, green: 0.11, blue: 0.14))
+                .presentationDetents([.height(320)])
                 .presentationBackground(.clear)
                 .presentationDragIndicator(.visible)
+                .environment(\.colorScheme, colorScheme)
+                .preferredColorScheme(colorScheme == .dark ? .dark : .light)
+                .presentationBackgroundInteraction(.enabled(upThrough: .height(320)))
         }
         .sheet(isPresented: $showEmailSheet) {
             emailLoginSheet
-                .presentationDetents([.medium])
+                .tint(colorScheme == .dark ? .white : Color(red: 0.11, green: 0.11, blue: 0.14))
+                .presentationDetents([.height(420)])
                 .presentationBackground(.clear)
                 .presentationDragIndicator(.visible)
+                .environment(\.colorScheme, colorScheme)
+                .preferredColorScheme(colorScheme == .dark ? .dark : .light)
+                .presentationBackgroundInteraction(.enabled(upThrough: .height(420)))
         }
         .sheet(isPresented: $showRegistration) {
             RegistrationView(isPresented: $showRegistration)
+                .tint(colorScheme == .dark ? .white : Color(red: 0.11, green: 0.11, blue: 0.14))
                 .environmentObject(appState)
                 .presentationDetents([.medium, .large])
                 .presentationBackground(.clear)
                 .presentationDragIndicator(.visible)
+                .preferredColorScheme(colorScheme == .dark ? .dark : .light)
         }
     }
 
@@ -219,24 +506,23 @@ struct AuthView: View {
                     languageSwitcher
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 14)
+                .padding(.top, verticalSizeClass == .compact ? 28 : 14)
 
                 Spacer(minLength: 0)
 
-                logoSection.padding(.bottom, 60)
+                logoSection.padding(.bottom, verticalSizeClass == .compact ? 42 : 60)
 
                 VStack(spacing: 12) {
                     appleSignInButton
 
-                    GoogleAuthButton(title: "Войти через Google") {
+                    GoogleAuthButton(title: L("auth.google")) {
                         errorText = nil
                         handleGoogleSignIn()
                     }
 
                     GlassAuthButton(
                         icon: "envelope.fill",
-                        title: "Войти по email",
-                        iconColor: AuthPalette.primary(colorScheme)
+                        title: L("auth.email_login")
                     ) {
                         errorText = nil
                         showEmailSheet = true
@@ -244,7 +530,7 @@ struct AuthView: View {
 
                     HStack {
                         Rectangle().fill(AuthPalette.divider(colorScheme)).frame(height: 0.5)
-                        Text("или")
+                        Text(L("auth.or"))
                             .font(.system(size: 13))
                             .foregroundStyle(AuthPalette.tertiary(colorScheme))
                         Rectangle().fill(AuthPalette.divider(colorScheme)).frame(height: 0.5)
@@ -253,8 +539,7 @@ struct AuthView: View {
 
                     GlassAuthButton(
                         icon: "phone.fill",
-                        title: "По номеру телефона",
-                        iconColor: AuthPalette.primary(colorScheme)
+                        title: L("auth.phone")
                     ) {
                         errorText = nil
                         showPhoneSheet = true
@@ -312,139 +597,206 @@ struct AuthView: View {
 
     // MARK: - Theme helpers
 
-    private func isThemeModeSelected(_ mode: AppTheme) -> Bool {
+    private func effectiveThemeMode() -> AppTheme {
         switch appState.settings.theme {
-        case .dark:   return mode == .dark
-        case .light:  return mode == .light
-        case .system: return (mode == .dark && colorScheme == .dark) || (mode == .light && colorScheme == .light)
+        case .dark, .light:
+            return appState.settings.theme
+        case .system:
+            return colorScheme == .dark ? .dark : .light
         }
     }
 
-    // MARK: - Theme Toggle — pure SwiftUI
+    private func isThemeModeSelected(_ mode: AppTheme) -> Bool {
+        effectiveThemeMode() == mode
+    }
+
+    // MARK: - Theme Toggle — Floating glass pill with fluid drag
+
+    private static let themeItems: [(AppTheme, String)] = [
+        (.dark,  "moon.fill"),
+        (.light, "sun.max.fill"),
+    ]
+    private let themeItemW: CGFloat = 52
+    private let themeH: CGFloat = 44
+
+    /// nil = not dragging; otherwise = thumb left-edge progress between 0 and 1
+    @State private var themeDragProgress: CGFloat? = nil
+    @State private var themeDraggedTheme: AppTheme? = nil
 
     @ViewBuilder
     private var themeAppearanceToggle: some View {
-        let isDark = isThemeModeSelected(.dark)
+        let items   = Self.themeItems
+        let selIdx  = isThemeModeSelected(.dark) ? 0 : 1
+        let totalW  = themeItemW * CGFloat(items.count)
+        let pad: CGFloat = 4
+        let thumbTravel = totalW - themeItemW
+        let indicatorX: CGFloat = {
+            if let progress = themeDragProgress {
+                return thumbTravel * progress + pad / 2
+            }
+            return CGFloat(selIdx) * themeItemW + pad / 2
+        }()
 
-        ZStack(alignment: isDark ? .leading : .trailing) {
+        ZStack(alignment: .leading) {
             // Sliding indicator
             Capsule()
-                .fill(.regularMaterial)
-                .frame(width: 44, height: 36)
-                .padding(6)
+                .fill(AuthPalette.primary(colorScheme).opacity(0.25))
+                .frame(width: themeItemW - pad, height: themeH - pad)
+                .offset(x: indicatorX)
+                .animation(themeDragProgress == nil
+                    ? .spring(response: 0.35, dampingFraction: 0.78)
+                    : .interactiveSpring(response: 0.18, dampingFraction: 0.85),
+                    value: indicatorX)
 
-            // Buttons
+            // Icons
             HStack(spacing: 0) {
-                Button {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.70)) {
-                        appState.settings.theme = .dark
-                    }
-                } label: {
-                    Image(systemName: "moon.fill")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(isDark ? AuthPalette.primary(colorScheme) : AuthPalette.tertiary(colorScheme))
-                        .frame(width: 48, height: 48)
+                ForEach(Array(items.enumerated()), id: \.offset) { idx, item in
+                    let (theme, icon) = item
+                    let selected = isThemeModeSelected(theme)
+                    Image(systemName: icon)
+                        .font(.system(size: 19, weight: .medium))
+                        .foregroundStyle(selected ? AuthPalette.primary(colorScheme) : AuthPalette.primary(colorScheme).opacity(0.38))
+                        .frame(width: themeItemW, height: themeH)
+                        .animation(.spring(response: 0.3, dampingFraction: 0.75), value: selected)
                         .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.78)) {
+                                themeDragProgress = nil
+                                themeDraggedTheme = nil
+                                appState.settings.theme = theme
+                            }
+                        }
                 }
-                .buttonStyle(.plain)
-
-                Button {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.70)) {
-                        appState.settings.theme = .light
-                    }
-                } label: {
-                    Image(systemName: "sun.max.fill")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(!isDark ? AuthPalette.primary(colorScheme) : AuthPalette.tertiary(colorScheme))
-                        .frame(width: 48, height: 48)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
             }
         }
-        .frame(width: 96, height: 48)
-        .background(.regularMaterial, in: Capsule())
-        .overlay(Capsule().strokeBorder(AuthPalette.borderStrong(colorScheme), lineWidth: 0.5))
+        .frame(width: totalW, height: themeH)
+        .contentShape(Capsule())
+        .glassEffect(.regular.interactive(), in: Capsule())
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 4)
+                .onChanged { value in
+                    let leftEdge = min(max(value.location.x - themeItemW / 2, 0), thumbTravel)
+                    let progress = thumbTravel == 0 ? 0 : leftEdge / thumbTravel
+                    let idx = progress >= 0.5 ? 1 : 0
+                    let theme = items[idx].0
+                    themeDragProgress = progress
+
+                    guard themeDraggedTheme != theme else { return }
+                    themeDraggedTheme = theme
+                    guard appState.settings.theme != theme else { return }
+                    withAnimation(.interactiveSpring(response: 0.2, dampingFraction: 0.86)) {
+                        appState.settings.theme = theme
+                    }
+                }
+                .onEnded { value in
+                    let leftEdge = min(max(value.location.x - themeItemW / 2, 0), thumbTravel)
+                    let progress = thumbTravel == 0 ? 0 : leftEdge / thumbTravel
+                    let idx = progress >= 0.5 ? 1 : 0
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.78)) {
+                        appState.settings.theme = items[idx].0
+                        themeDragProgress = nil
+                        themeDraggedTheme = nil
+                    }
+                }
+        )
     }
 
-    // MARK: - Language Switcher (без GlassEffectContainer — убирает лаг и микроанимацию)
+    // MARK: - Language Switcher — Liquid Glass
 
     var languageSwitcher: some View {
         let option = languageOption(for: selectedLanguageId)
-        return Menu {
-            ForEach(languageOptions) { lang in
-                Button {
-                    selectedLanguageId = lang.id
-                } label: {
-                    Text("\(lang.flag) \(lang.name)")
-                }
-            }
-        } label: {
+        return ZStack {
             HStack(spacing: 6) {
                 Text(option.flag)
+                    .font(.system(size: 14))
                 Text(option.name)
                     .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(AuthPalette.primary(colorScheme))
                 Image(systemName: "chevron.down")
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(AuthPalette.secondary(colorScheme))
             }
             .foregroundStyle(AuthPalette.primary(colorScheme))
             .padding(.horizontal, 14)
-            .frame(height: 48)
-            .background(.regularMaterial, in: Capsule())
-            .overlay(Capsule().strokeBorder(AuthPalette.borderStrong(colorScheme), lineWidth: 0.5))
+            .frame(height: 44)
+            .animation(nil, value: option.name)
+            .glassEffect(.regular.interactive(), in: Capsule())
+            .allowsHitTesting(false)
+
+            Menu {
+                ForEach(languageOptions) { lang in
+                    Button {
+                        selectedLanguageId = lang.id
+                    } label: {
+                        Text("\(lang.flag) \(lang.name)")
+                    }
+                }
+            } label: {
+                Capsule()
+                    .fill(.clear)
+                    .frame(minWidth: 148, minHeight: 44)
+                    .contentShape(Capsule())
+            }
         }
+        .fixedSize()
+        .menuOrder(.fixed)
         .buttonStyle(.plain)
-        // Отключаем встроенную анимацию лейбла при смене языка
         .transaction { $0.animation = nil }
     }
 
     // MARK: - Subviews
 
     var logoSection: some View {
-        VStack(spacing: 16) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 28)
-                    .fill(.ultraThinMaterial)
-                    .frame(width: 90, height: 90)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 28)
-                            .strokeBorder(AuthPalette.borderStrong(colorScheme), lineWidth: 0.5)
-                    )
-                Image(systemName: "sparkles")
-                    .font(.system(size: 40, weight: .light))
-                    .foregroundStyle(AuthPalette.primary(colorScheme))
-            }
-            VStack(spacing: 6) {
-                Text("Nexus")
-                    .font(.system(size: 38, weight: .bold, design: .rounded))
-                    .foregroundStyle(AuthPalette.primary(colorScheme))
-                Text("Твой AI-ассистент для роста")
-                    .font(.system(size: 16))
-                    .foregroundStyle(AuthPalette.secondary(colorScheme))
-            }
+        VStack(spacing: 12) {
+            Image("Logo_Main")
+                .resizable()
+                .scaledToFit()
+                .frame(height: 72)
+                .colorMultiply(colorScheme == .dark ? .white : .black)
+            TypewriterText(phrases: authPhrases)
+                .frame(height: 20)
         }
     }
 
     var appleSignInButton: some View {
-        SignInWithAppleButton(.signIn) { request in
-            request.requestedScopes = [.fullName, .email]
-        } onCompletion: { result in
-            switch result {
-            case .success(let auth): handleAppleAuth(auth)
-            case .failure(let error):
-                errorText = "Ошибка входа Apple"
-                print(error)
+        ZStack {
+            // Невидимая нативная кнопка — получает тапы
+            SignInWithAppleButton(.signIn) { request in
+                request.requestedScopes = [.fullName, .email]
+            } onCompletion: { result in
+                switch result {
+                case .success(let auth): handleAppleAuth(auth)
+                case .failure(let error):
+                    errorText = "Ошибка входа Apple"
+                    print(error)
+                }
             }
+            .signInWithAppleButtonStyle(.white)
+            .frame(height: 54)
+            .opacity(0.001)
+
+            // Визуальная белая кнопка — не перехватывает тапы
+            HStack(spacing: 12) {
+                Image(systemName: "applelogo")
+                    .font(.system(size: 18))
+                    .foregroundStyle(.black)
+                Text("Вход с Apple")
+                    .font(.system(size: 19, weight: .semibold))
+                    .foregroundStyle(.black)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 54)
+            .background(Color.white, in: Capsule())
+            .shadow(color: .black.opacity(0.18), radius: 12, x: 0, y: 8)
+            .allowsHitTesting(false)
         }
-        .signInWithAppleButtonStyle(.white)
         .frame(height: 54)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(AuthPalette.borderStrong(colorScheme), lineWidth: 0.5)
-        )
-        .edgeSheen(cornerRadius: 16)
+    }
+
+    var canSubmitEmail: Bool {
+        let e = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        let p = password.trimmingCharacters(in: .whitespacesAndNewlines)
+        return e.contains("@") && e.contains(".") && e.count >= 5 && p.count >= 6
     }
 
     var emailLoginSheet: some View {
@@ -465,22 +817,53 @@ struct AuthView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.horizontal, 16).padding(.vertical, 14)
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
-                    .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(AuthPalette.border(colorScheme), lineWidth: 0.5))
+                    .frame(height: 50)
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .overlay(Capsule().strokeBorder(AuthPalette.border(colorScheme), lineWidth: 0.5))
                     .contentShape(Rectangle())
                     .onTapGesture { focusField = .email }
 
                     HStack {
-                        SecureField("Пароль", text: $password)
-                            .focused($focusField, equals: .password)
-                            .foregroundStyle(AuthPalette.primary(colorScheme))
+                        ZStack(alignment: .leading) {
+                            if showEmailPassword {
+                                TextField("Пароль", text: $password)
+                                    .textContentType(.oneTimeCode)
+                                    .autocorrectionDisabled(true)
+                                    .textInputAutocapitalization(.never)
+                                    .foregroundStyle(AuthPalette.primary(colorScheme))
+                                    .tint(AuthPalette.primary(colorScheme))
+                                    .focused($focusField, equals: .password)
+                            } else {
+                                AuthSecureInputField(
+                                    placeholder: "Пароль",
+                                    text: $password,
+                                    isFirstResponder: focusField == .password,
+                                    textColor: UIColor(AuthPalette.primary(colorScheme)),
+                                    placeholderColor: UIColor(AuthPalette.secondary(colorScheme)),
+                                    textContentType: .oneTimeCode
+                                ) { isFocused in
+                                    if isFocused {
+                                        focusField = .password
+                                    }
+                                }
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        Button {
+                            showEmailPassword.toggle()
+                            DispatchQueue.main.async { focusField = .password }
+                        } label: {
+                            Image(systemName: showEmailPassword ? "eye" : "eye.slash")
+                                .foregroundStyle(AuthPalette.secondary(colorScheme))
+                                .frame(width: 24)
+                        }
+                        .buttonStyle(.plain)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.horizontal, 16).padding(.vertical, 14)
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
-                    .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(AuthPalette.border(colorScheme), lineWidth: 0.5))
-                    .contentShape(Rectangle())
-                    .onTapGesture { focusField = .password }
+                    .frame(height: 50)
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .overlay(Capsule().strokeBorder(AuthPalette.border(colorScheme), lineWidth: 0.5))
 
                     if let err = errorText {
                         Text(err)
@@ -488,29 +871,30 @@ struct AuthView: View {
                             .foregroundStyle(.red.opacity(0.9))
                             .multilineTextAlignment(.center)
                             .frame(maxWidth: .infinity)
+                    } else {
+                        Color.clear.frame(height: 16)
                     }
 
                     Button { handleEmailAuth() } label: {
                         Text("Войти")
                             .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(Color.white)
-                            .frame(maxWidth: .infinity)
+                            .foregroundStyle(canSubmitEmail ? Color.white : AuthPalette.secondary(colorScheme))
+                            .frame(width: 180)
                             .padding(.vertical, 16)
-                            .background(
-                                LinearGradient(
-                                    colors: [Color(red: 0.3, green: 0.4, blue: 1.0), Color(red: 0.5, green: 0.1, blue: 0.9)],
-                                    startPoint: .leading, endPoint: .trailing
-                                ),
-                                in: RoundedRectangle(cornerRadius: 14)
-                            )
+                            .background {
+                                AuthPrimaryActionBackground(isEnabled: canSubmitEmail)
+                            }
                     }
+                    .disabled(!canSubmitEmail)
                 }
                 .padding(.horizontal, 24)
+                .frame(maxWidth: 480)
+                .frame(maxWidth: .infinity)
                 Spacer(minLength: 0)
             }
         }
-        .contentShape(Rectangle())
         .dismissKeyboardOnTap()
+        .ignoresSafeArea(.keyboard)
         .onAppear { focusField = .email }
     }
 
@@ -585,7 +969,7 @@ struct AuthView: View {
                                     Button {
                                         selectedCountryId = option.id
                                         countryCode = option.code
-                                    } label: { Text("\(option.flag) \(countryShortCode(for: option))") }
+                                    } label: { Text("\(option.flag) \(option.name)  \(option.code)") }
                                 }
                             } label: {
                                 HStack(spacing: 6) {
@@ -607,8 +991,8 @@ struct AuthView: View {
                         }
                         .frame(width: 96)
                         .padding(.horizontal, 12).padding(.vertical, 14)
-                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
-                        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(AuthPalette.border(colorScheme), lineWidth: 0.5))
+                        .background(.ultraThinMaterial, in: Capsule())
+                        .overlay(Capsule().strokeBorder(AuthPalette.border(colorScheme), lineWidth: 0.5))
                         .contentShape(Rectangle())
                         .onTapGesture { phoneField = .code }
 
@@ -620,8 +1004,8 @@ struct AuthView: View {
                             .foregroundStyle(AuthPalette.primary(colorScheme))
                             .frame(maxWidth: .infinity)
                             .padding(.horizontal, 12).padding(.vertical, 14)
-                            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
-                            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(AuthPalette.border(colorScheme), lineWidth: 0.5))
+                            .background(.ultraThinMaterial, in: Capsule())
+                            .overlay(Capsule().strokeBorder(AuthPalette.border(colorScheme), lineWidth: 0.5))
                             .contentShape(Rectangle())
                             .focused($phoneField, equals: .number)
                             .onTapGesture { phoneField = .number }
@@ -641,20 +1025,22 @@ struct AuthView: View {
                     Button("Скоро") {}
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(AuthPalette.tertiary(colorScheme))
-                        .frame(maxWidth: .infinity)
+                        .frame(width: 180)
                         .padding(.vertical, 14)
                         .background(
                             (colorScheme == .dark ? Color.white : Color.black).opacity(0.08),
-                            in: RoundedRectangle(cornerRadius: 14)
+                            in: Capsule()
                         )
                         .disabled(true)
                 }
                 .padding(.horizontal, 24)
+                .frame(maxWidth: 480)
+                .frame(maxWidth: .infinity)
                 Spacer(minLength: 0)
             }
         }
-        .contentShape(Rectangle())
         .dismissKeyboardOnTap()
+        .ignoresSafeArea(.keyboard)
         .onAppear {
             let defaultCountry = defaultCountryOption(for: selectedLanguageId)
             if countryCode.isEmpty { countryCode = defaultCountry.code }
@@ -707,13 +1093,13 @@ struct RegistrationView: View {
     @State private var email = ""
     @State private var password = ""
     @State private var confirmPassword = ""
-    @State private var verificationCode = ""
-    @State private var awaitingCode = false
     @State private var errorText: String?
+    @State private var showPassword = false
+    @State private var showConfirmPassword = false
     @FocusState private var focusField: FocusField?
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 
-    enum FocusField: Hashable { case email, password, confirm, code }
+    enum FocusField: Hashable { case email, password, confirm }
 
     var body: some View {
         ZStack {
@@ -725,6 +1111,7 @@ struct RegistrationView: View {
             }
         }
         .dismissKeyboardOnTap()
+        .tint(colorScheme == .dark ? .white : Color(red: 0.11, green: 0.11, blue: 0.14))
     }
 
     var registrationContent: some View {
@@ -733,74 +1120,141 @@ struct RegistrationView: View {
                 isPresented = false; dismiss()
             }
             VStack(spacing: 12) {
-                if !awaitingCode {
-                    TextField("Email", text: $email)
-                        .keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled(true)
-                        .focused($focusField, equals: .email).foregroundStyle(AuthPalette.primary(colorScheme))
-                        .padding(.horizontal, 16).padding(.vertical, 14)
-                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
-                        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(AuthPalette.border(colorScheme), lineWidth: 0.5))
-                        .contentShape(Rectangle()).onTapGesture { focusField = .email }
+                // Email
+                TextField("Email", text: $email)
+                    .keyboardType(.emailAddress)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled(true)
+                    .textContentType(.emailAddress)
+                    .focused($focusField, equals: .email)
+                    .foregroundStyle(AuthPalette.primary(colorScheme))
+                    .padding(.horizontal, 16).padding(.vertical, 14)
+                    .frame(height: 50)
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .overlay(Capsule().strokeBorder(AuthPalette.border(colorScheme), lineWidth: 0.5))
 
-                    SecureField("Пароль", text: $password)
-                        .focused($focusField, equals: .password).foregroundStyle(AuthPalette.primary(colorScheme))
-                        .padding(.horizontal, 16).padding(.vertical, 14)
-                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
-                        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(AuthPalette.border(colorScheme), lineWidth: 0.5))
-                        .contentShape(Rectangle()).onTapGesture { focusField = .password }
-
-                    SecureField("Повтори пароль", text: $confirmPassword)
-                        .focused($focusField, equals: .confirm).foregroundStyle(AuthPalette.primary(colorScheme))
-                        .padding(.horizontal, 16).padding(.vertical, 14)
-                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
-                        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(AuthPalette.border(colorScheme), lineWidth: 0.5))
-                        .contentShape(Rectangle()).onTapGesture { focusField = .confirm }
-                } else {
-                    Text("Мы отправили код подтверждения на почту.")
-                        .font(.system(size: 14)).foregroundStyle(AuthPalette.secondary(colorScheme))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-
-                    TextField("Код из письма", text: $verificationCode)
-                        .keyboardType(.numberPad).focused($focusField, equals: .code).foregroundStyle(AuthPalette.primary(colorScheme))
-                        .padding(.horizontal, 16).padding(.vertical, 14)
-                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
-                        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(AuthPalette.border(colorScheme), lineWidth: 0.5))
-                        .contentShape(Rectangle()).onTapGesture { focusField = .code }
+                // Пароль
+                HStack {
+                    ZStack(alignment: .leading) {
+                        if showPassword {
+                            TextField("Пароль", text: $password)
+                                .textContentType(.newPassword)
+                                .autocorrectionDisabled(true)
+                                .textInputAutocapitalization(.never)
+                                .foregroundStyle(AuthPalette.primary(colorScheme))
+                                .focused($focusField, equals: .password)
+                        } else {
+                            AuthSecureInputField(
+                                placeholder: "Пароль",
+                                text: $password,
+                                isFirstResponder: focusField == .password,
+                                textColor: UIColor(AuthPalette.primary(colorScheme)),
+                                placeholderColor: UIColor(AuthPalette.secondary(colorScheme)),
+                                textContentType: .newPassword
+                            ) { isFocused in
+                                if isFocused {
+                                    focusField = .password
+                                }
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    Button {
+                        showPassword.toggle()
+                        DispatchQueue.main.async { focusField = .password }
+                    } label: {
+                        Image(systemName: showPassword ? "eye" : "eye.slash")
+                            .foregroundStyle(AuthPalette.secondary(colorScheme)).frame(width: 24)
+                    }
+                    .buttonStyle(.plain)
                 }
+                .padding(.horizontal, 16).padding(.vertical, 14)
+                .frame(height: 50)
+                .background(.ultraThinMaterial, in: Capsule())
+                .overlay(Capsule().strokeBorder(AuthPalette.border(colorScheme), lineWidth: 0.5))
 
-                if !awaitingCode, !password.isEmpty, !confirmPassword.isEmpty, password != confirmPassword {
-                    Text("Пароли не совпадают").font(.system(size: 13)).foregroundStyle(.red.opacity(0.9))
-                        .multilineTextAlignment(.center).padding(.horizontal, 12)
+                // Повтори пароль
+                HStack {
+                    ZStack(alignment: .leading) {
+                        if showConfirmPassword {
+                            TextField("Повтори пароль", text: $confirmPassword)
+                                .textContentType(.newPassword)
+                                .autocorrectionDisabled(true)
+                                .textInputAutocapitalization(.never)
+                                .foregroundStyle(AuthPalette.primary(colorScheme))
+                                .focused($focusField, equals: .confirm)
+                        } else {
+                            AuthSecureInputField(
+                                placeholder: "Повтори пароль",
+                                text: $confirmPassword,
+                                isFirstResponder: focusField == .confirm,
+                                textColor: UIColor(AuthPalette.primary(colorScheme)),
+                                placeholderColor: UIColor(AuthPalette.secondary(colorScheme)),
+                                textContentType: .newPassword
+                            ) { isFocused in
+                                if isFocused {
+                                    focusField = .confirm
+                                }
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    Button {
+                        showConfirmPassword.toggle()
+                        DispatchQueue.main.async { focusField = .confirm }
+                    } label: {
+                        Image(systemName: showConfirmPassword ? "eye" : "eye.slash")
+                            .foregroundStyle(AuthPalette.secondary(colorScheme)).frame(width: 24)
+                    }
+                    .buttonStyle(.plain)
                 }
-                if let errorText {
-                    Text(errorText).font(.system(size: 13)).foregroundStyle(.red.opacity(0.9))
-                        .multilineTextAlignment(.center).padding(.horizontal, 12)
+                .padding(.horizontal, 16).padding(.vertical, 14)
+                .frame(height: 50)
+                .background(.ultraThinMaterial, in: Capsule())
+                .overlay(Capsule().strokeBorder(AuthPalette.border(colorScheme), lineWidth: 0.5))
+
+                VStack(spacing: 4) {
+                    if !password.isEmpty, !confirmPassword.isEmpty, password != confirmPassword {
+                        Text("Пароли не совпадают")
+                            .font(.system(size: 13))
+                            .foregroundStyle(.red.opacity(0.9))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 12)
+                    }
+                    if let errorText {
+                        Text(errorText)
+                            .font(.system(size: 13))
+                            .foregroundStyle(.red.opacity(0.9))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 12)
+                    }
                 }
+                .frame(minHeight: 32)
 
                 Button {
-                    awaitingCode ? verifyCodeAndFinish() : createAccount()
+                    createAccount()
                 } label: {
-                    Text(awaitingCode ? "Подтвердить" : "Создать аккаунт")
+                    Text("Создать аккаунт")
                         .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(canSubmit ? Color.white : AuthPalette.primary(colorScheme))
+                        .foregroundStyle(canSubmit ? Color.white : AuthPalette.secondary(colorScheme))
                         .frame(maxWidth: verticalSizeClass == .compact ? 160 : 200)
                         .padding(.vertical, 14)
-                        .background(
-                            canSubmit
-                            ? LinearGradient(colors: [Color(red: 0.3, green: 0.4, blue: 1.0), Color(red: 0.5, green: 0.1, blue: 0.9)], startPoint: .leading, endPoint: .trailing)
-                            : LinearGradient(colors: [(colorScheme == .dark ? Color.white : Color.black).opacity(0.12), (colorScheme == .dark ? Color.white : Color.black).opacity(0.12)], startPoint: .leading, endPoint: .trailing),
-                            in: RoundedRectangle(cornerRadius: 14)
-                        )
+                        .background {
+                            AuthPrimaryActionBackground(isEnabled: canSubmit)
+                        }
                 }
                 .disabled(!canSubmit)
             }
             .padding(.horizontal, 24)
+            .frame(maxWidth: 480)
+            .frame(maxWidth: .infinity)
+            // Fix 1: минимальная высота зафиксирована — нет прыжка при autofill
+            .frame(minHeight: 260, alignment: .top)
             Spacer(minLength: 0)
         }
     }
 
     var canSubmit: Bool {
-        if awaitingCode { return verificationCode.trimmingCharacters(in: .whitespaces).count >= 4 }
         let e = email.trimmingCharacters(in: .whitespacesAndNewlines)
         let p = password.trimmingCharacters(in: .whitespacesAndNewlines)
         let c = confirmPassword.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -817,49 +1271,176 @@ struct RegistrationView: View {
         guard p == c else { errorText = "Пароли не совпадают"; return }
         #if canImport(FirebaseAuth)
         Auth.auth().createUser(withEmail: e, password: p) { authResult, error in
-            if let error { errorText = "Не удалось создать аккаунт"; print(error); return }
-            if let user = authResult?.user { user.sendEmailVerification(completion: nil); awaitingCode = true }
+            if let error {
+                if (error as NSError).code == AuthErrorCode.emailAlreadyInUse.rawValue {
+                    errorText = "Этот email уже зарегистрирован"
+                } else {
+                    errorText = "Не удалось создать аккаунт"
+                }
+                print(error)
+                return
+            }
+            guard let user = authResult?.user else { return }
+            // Сразу входим без верификации
+            appState.signIn(with: AuthUser(
+                provider: .email,
+                email: user.email ?? e,
+                phone: nil, fullName: nil, password: nil, appleUserId: nil
+            ))
+            isPresented = false
         }
         #else
-        awaitingCode = true
+        appState.signIn(with: AuthUser(provider: .email, email: e, phone: nil, fullName: nil, password: nil, appleUserId: nil))
+        isPresented = false
         #endif
     }
+}
 
-    func verifyCodeAndFinish() {
-        guard canSubmit else { return }
-        appState.signIn(with: AuthUser(provider: .email, email: email.trimmingCharacters(in: .whitespacesAndNewlines), phone: nil, fullName: nil, password: nil, appleUserId: nil))
-        isPresented = false
+private struct AuthSecureInputField: UIViewRepresentable {
+    let placeholder: String
+    @Binding var text: String
+    var isFirstResponder: Bool
+    var textColor: UIColor
+    var placeholderColor: UIColor
+    var textContentType: UITextContentType
+    var onFocusChange: ((Bool) -> Void)? = nil
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(text: $text, onFocusChange: onFocusChange)
+    }
+
+    func makeUIView(context: Context) -> UITextField {
+        let textField = UITextField(frame: .zero)
+        textField.delegate = context.coordinator
+        textField.isSecureTextEntry = true
+        textField.overrideUserInterfaceStyle = .dark
+        textField.keyboardAppearance = .dark
+        textField.autocorrectionType = .no
+        textField.autocapitalizationType = .none
+        textField.borderStyle = .none
+        textField.backgroundColor = .clear
+        textField.font = .systemFont(ofSize: 17)
+        textField.textAlignment = .left
+        textField.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        textField.addTarget(context.coordinator, action: #selector(Coordinator.textChanged(_:)), for: .editingChanged)
+        return textField
+    }
+
+    func updateUIView(_ uiView: UITextField, context: Context) {
+        context.coordinator.onFocusChange = onFocusChange
+        if uiView.text != text {
+            uiView.text = text
+            // Re-apply secure rendering after autofill so password bullets keep the intended color.
+            let cursorOffset = uiView.selectedTextRange
+            uiView.isSecureTextEntry = false
+            uiView.isSecureTextEntry = true
+            uiView.selectedTextRange = cursorOffset
+        }
+
+        uiView.textColor = textColor
+        uiView.tintColor = textColor
+        uiView.overrideUserInterfaceStyle = .dark
+        uiView.keyboardAppearance = .dark
+        uiView.textContentType = textContentType
+        uiView.attributedPlaceholder = NSAttributedString(
+            string: placeholder,
+            attributes: [.foregroundColor: placeholderColor]
+        )
+
+        if isFirstResponder, !uiView.isFirstResponder {
+            uiView.becomeFirstResponder()
+        }
+    }
+
+    final class Coordinator: NSObject, UITextFieldDelegate {
+        @Binding var text: String
+        var onFocusChange: ((Bool) -> Void)?
+
+        init(text: Binding<String>, onFocusChange: ((Bool) -> Void)?) {
+            _text = text
+            self.onFocusChange = onFocusChange
+        }
+
+        @objc func textChanged(_ sender: UITextField) {
+            text = sender.text ?? ""
+        }
+
+        func textFieldDidBeginEditing(_ textField: UITextField) {
+            onFocusChange?(true)
+        }
+
+        func textFieldDidEndEditing(_ textField: UITextField) {
+            onFocusChange?(false)
+        }
     }
 }
+
+private struct AuthPrimaryActionBackground: View {
+    let isEnabled: Bool
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        Capsule()
+            .fill(colorScheme == .dark ? AnyShapeStyle(.clear) : AnyShapeStyle(.regularMaterial))
+            .overlay {
+                Capsule()
+                    .fill(
+                        isEnabled
+                        ? LinearGradient(
+                            colors: [
+                                Color(red: 0.02, green: 0.45, blue: 0.98).opacity(0.92),
+                                Color(red: 0.12, green: 0.72, blue: 0.98).opacity(0.86)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                        : LinearGradient(
+                            colors: [
+                                (colorScheme == .dark ? Color.white : Color.black).opacity(0.12),
+                                (colorScheme == .dark ? Color.white : Color.black).opacity(0.12)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+            }
+            .overlay {
+                Capsule()
+                    .strokeBorder(
+                        isEnabled ? .white.opacity(0.18) : .white.opacity(0.08),
+                        lineWidth: 0.5
+                    )
+            }
+            .if(isEnabled) { $0.glassEffect(.regular.interactive(), in: Capsule()) }
+    }
+}
+
+
 
 // MARK: - GlassAuthButton
 
 struct GlassAuthButton: View {
     let icon: String
     let title: String
-    let iconColor: Color
     let action: () -> Void
     @Environment(\.colorScheme) private var colorScheme
-    @State private var pressed = false
+
+    private var fg: Color { colorScheme == .dark ? .white : Color(red: 0.11, green: 0.11, blue: 0.14) }
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 12) {
-                Image(systemName: icon).font(.system(size: 18)).foregroundStyle(iconColor).frame(width: 24)
-                Text(title).font(.system(size: 16, weight: .medium)).foregroundStyle(AuthPalette.primary(colorScheme))
+                Image(systemName: icon).font(.system(size: 18)).foregroundStyle(fg).frame(width: 24)
+                Text(title).font(.system(size: 16, weight: .medium)).foregroundStyle(fg)
                 Spacer()
             }
             .padding(.horizontal, 20).frame(height: 54)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
-            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(AuthPalette.borderStrong(colorScheme), lineWidth: 0.5))
-            .edgeSheen(cornerRadius: 16)
-            .scaleEffect(pressed ? 0.97 : 1.0)
+            .frame(maxWidth: .infinity)
+            .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .simultaneousGesture(DragGesture(minimumDistance: 0)
-            .onChanged { _ in withAnimation(.spring(response: 0.2)) { pressed = true } }
-            .onEnded   { _ in withAnimation(.spring(response: 0.3)) { pressed = false } }
-        )
+        .transaction { $0.animation = nil }
+        .glassEffect(.regular.interactive(), in: Capsule())
     }
 }
 
@@ -869,26 +1450,23 @@ struct GoogleAuthButton: View {
     let title: String
     let action: () -> Void
     @Environment(\.colorScheme) private var colorScheme
-    @State private var pressed = false
+
+    private var fg: Color { colorScheme == .dark ? .white : Color(red: 0.11, green: 0.11, blue: 0.14) }
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 12) {
                 Image("Google-icon").resizable().scaledToFit().frame(width: 18, height: 18).frame(width: 24)
-                Text(title).font(.system(size: 16, weight: .medium)).foregroundStyle(AuthPalette.primary(colorScheme))
+                Text(title).font(.system(size: 16, weight: .medium)).foregroundStyle(fg)
                 Spacer()
             }
             .padding(.horizontal, 20).frame(height: 54)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
-            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(AuthPalette.borderStrong(colorScheme), lineWidth: 0.5))
-            .edgeSheen(cornerRadius: 16)
-            .scaleEffect(pressed ? 0.97 : 1.0)
+            .frame(maxWidth: .infinity)
+            .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .simultaneousGesture(DragGesture(minimumDistance: 0)
-            .onChanged { _ in withAnimation(.spring(response: 0.2)) { pressed = true } }
-            .onEnded   { _ in withAnimation(.spring(response: 0.3)) { pressed = false } }
-        )
+        .transaction { $0.animation = nil }
+        .glassEffect(.regular.interactive(), in: Capsule())
     }
 }
 

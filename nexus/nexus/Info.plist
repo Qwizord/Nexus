@@ -13,6 +13,8 @@
 			</array>
 		</dict>
 	</array>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Nexus использует Face ID для защиты вашего аккаунта.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>

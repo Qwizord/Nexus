@@ -1,1 +1,212 @@
+/* Tabs */
+"tab.health" = "الصحة";
+"tab.finance" = "المالية";
+"tab.ai" = "الذكاء الاصطناعي";
+"tab.learning" = "التعلّم";
+"tab.settings" = "الإعدادات";
 
+/* Settings */
+"settings.title" = "الإعدادات";
+"settings.stats" = "الإحصائيات";
+"settings.integrations" = "التكاملات";
+"settings.security" = "الأمان والمظهر";
+"settings.theme" = "المظهر";
+"settings.language" = "اللغة";
+"settings.notifications" = "الإشعارات";
+"settings.faceid" = "Face ID / Touch ID";
+"settings.signout" = "تسجيل الخروج";
+"settings.rate" = "قيّم Nexus";
+"settings.support" = "الدعم";
+"settings.feedback" = "ملاحظات";
+"settings.cache" = "مسح ذاكرة التخزين المؤقت";
+"settings.privacy" = "سياسة الخصوصية";
+"settings.terms" = "شروط الاستخدام";
+
+/* Profile */
+"profile.title" = "الملف الشخصي";
+"profile.firstname" = "الاسم الأول";
+"profile.middlename" = "الاسم الأوسط";
+"profile.lastname" = "اسم العائلة";
+"profile.bio" = "نبذة تعريفية";
+"profile.height" = "الطول";
+"profile.weight" = "الوزن";
+"profile.gender" = "الجنس";
+"profile.birthdate" = "تاريخ الميلاد";
+"profile.country" = "البلد";
+"profile.city" = "المدينة";
+
+/* Finance */
+"finance.income" = "الدخل";
+"finance.expense" = "المصروفات";
+"finance.balance" = "الرصيد";
+"finance.debt" = "الديون";
+"finance.investments" = "الاستثمارات";
+"finance.transactions" = "المعاملات";
+"finance.nodata" = "لا توجد معاملات في هذه الفترة";
+
+/* Health */
+"health.steps" = "الخطوات";
+"health.sleep" = "النوم";
+"health.heartrate" = "معدّل ضربات القلب";
+"health.calories" = "السعرات الحرارية";
+"health.water" = "الماء";
+
+/* AI Assistant */
+"ai.title" = "المساعد الذكي";
+"ai.newchat" = "محادثة جديدة";
+"ai.history" = "السجلّ";
+"ai.typing" = "يكتب...";
+"ai.copy" = "نسخ الكل";
+
+/* Subscription */
+"sub.title" = "Nexus Pro";
+"sub.monthly" = "شهري";
+"sub.semiannual" = "٦ أشهر";
+"sub.lifetime" = "مدى الحياة";
+"sub.popular" = "الأكثر شيوعًا";
+"sub.bestprice" = "أفضل سعر";
+"sub.continue" = "متابعة";
+"sub.restore" = "استعادة المشتريات";
+
+/* Common */
+"common.save" = "حفظ";
+"common.cancel" = "إلغاء";
+"common.done" = "تم";
+"common.delete" = "حذف";
+"common.retry" = "إعادة المحاولة";
+"common.error" = "خطأ";
+"common.loading" = "جارٍ التحميل...";
+"common.search" = "بحث";
+"common.connection_error" = "خطأ في الاتصال";
+"common.check_internet" = "تحقّق من اتصالك بالإنترنت";
+"common.tap_retry" = "اضغط لإعادة المحاولة";
+
+/* Auth */
+"auth.login" = "تسجيل الدخول";
+"auth.register" = "إنشاء حساب";
+"auth.email" = "البريد الإلكتروني";
+"auth.password" = "كلمة المرور";
+"auth.forgot" = "نسيت كلمة المرور؟";
+
+/* Face ID */
+"faceid.locked" = "Nexus مقفل";
+"faceid.unlock" = "فتح القفل";
+"faceid.use" = "استخدم Face ID لفتح القفل";
+
+// Additional keys
+"settings.stats.detail" = "التفاصيل";
+"settings.units" = "الوحدات";
+"settings.currency" = "العملة";
+"settings.spotlight" = "Spotlight";
+"settings.account" = "الحساب";
+"settings.version" = "الإصدار";
+"settings.share" = "مشاركة";
+"settings.faq" = "الأسئلة الشائعة";
+"settings.changelog" = "سجل التغييرات";
+"profile.username" = "اسم المستخدم";
+"profile.race" = "العرق";
+"profile.ethnicity" = "الإثنية / الجنسية";
+"profile.diet" = "نوع النظام الغذائي";
+"profile.marital" = "الحالة الاجتماعية";
+"profile.about" = "نبذة عني";
+"finance.title" = "المالية";
+"finance.budget" = "الميزانية";
+"health.title" = "الصحة";
+"sub.subtitle" = "اكتشف كامل إمكانيات التطبيق";
+"sub.onetime" = "دفعة واحدة";
+"common.edit" = "تعديل";
+"common.enter" = "أدخل";
+"common.select" = "اختر";
+"notif.morning" = "صباح الخير";
+"notif.morning.body" = "ملخصك اليومي جاهز.";
+"notif.finance" = "المالية";
+"notif.finance.body" = "لا تنسَ تسجيل مصاريف اليوم.";
+"notif.health" = "الصحة";
+"notif.health.body" = "تحقق من مؤشراتك الصحية هذا الأسبوع.";
+
+// Auth screen
+"auth.google" = "تسجيل الدخول بـ Google";
+"auth.email_login" = "تسجيل الدخول بالبريد الإلكتروني";
+"auth.or" = "أو";
+"auth.phone" = "رقم الهاتف";
+"auth.no_account" = "ليس لديك حساب؟";
+"auth.signup_action" = "إنشاء حساب";
+"auth.create" = "إنشاء حساب";
+"auth.confirm" = "تأكيد";
+"auth.resend" = "إعادة الإرسال";
+"auth.code_sent" = "تم إرسال الرمز إلى";
+"auth.check_email" = "تحقق من بريدك الإلكتروني وأدخل الرمز.";
+
+"health.activity" = "النشاط";
+"health.weekly.steps" = "الخطوات الأسبوعية";
+"health.sleep.excellent" = "ممتاز";
+"health.sleep.normal" = "طبيعي";
+"health.sleep.poor" = "قليل";
+"health.burned" = "سعرة محروقة";
+"health.weight" = "الوزن";
+"health.bloodpressure" = "ضغط الدم";
+"health.oxygen" = "الأكسجين";
+"health.bpm" = "نبضة/دقيقة";
+"health.hour" = "س";
+"health.mmhg" = "ملم زئبق";
+"health.min.label" = "أدنى";
+"health.max.label" = "أقصى";
+"health.goal.steps" = "الهدف: 10,000";
+"health.goal.water" = "الهدف: 2,000 مل";
+"health.goal.activity" = "الهدف: 30 د";
+"weekday.mon" = "إث";
+"weekday.tue" = "ثل";
+"weekday.wed" = "أر";
+"weekday.thu" = "خم";
+"weekday.fri" = "جم";
+"weekday.sat" = "سب";
+"weekday.sun" = "أح";
+"finance.personal" = "شخصي";
+"finance.business" = "أعمال";
+"finance.balance.label" = "الرصيد";
+"finance.budget.categories" = "الميزانية حسب الفئة";
+"finance.filter" = "تصفية";
+"finance.no.transactions" = "لا توجد معاملات";
+"finance.add" = "إضافة";
+"finance.edit.transaction" = "تعديل";
+"finance.new.transaction" = "معاملة جديدة";
+"finance.amount" = "المبلغ";
+"finance.expense.label" = "مصروف";
+"finance.income.label" = "دخل";
+"finance.name" = "الاسم";
+"finance.category" = "الفئة";
+"finance.subcategory" = "الفئة الفرعية";
+"finance.source" = "المصدر";
+"finance.date" = "التاريخ";
+"finance.delete.transaction" = "حذف المعاملة";
+"finance.of" = "من";
+"finance.show.more" = "عرض المزيد";
+"finance.collapse" = "طي";
+"finance.what" = "ما هذا؟";
+"finance.reset" = "إعادة تعيين";
+"finance.categories.label" = "الفئات";
+"learning.subtitle" = "استمر في النمو";
+"learning.today" = "اليوم";
+"learning.courses" = "الدورات";
+"learning.weekly" = "النشاط الأسبوعي";
+"ai.agent" = "وكيل:";
+"ai.info.title" = "كيف يعمل الذكاء الاصطناعي";
+"ai.history.title" = "سجل المحادثات";
+"ai.history.empty" = "لا يوجد سجل بعد. ابدأ محادثة جديدة.";
+"ai.ok" = "حسناً";
+"ai.placeholder" = "رسالة...";
+"ai.send" = "إرسال";
+"settings.subscription.subtitle" = "ذكاء اصطناعي غير محدود، تحليلات، إشعارات";
+"settings.stat.days" = "أيام في التطبيق";
+"settings.stat.ai" = "جلسات الذكاء الاصطناعي";
+"settings.stat.health" = "سجلات الصحة";
+"settings.stat.since" = "منذ التسجيل";
+"settings.stat.total" = "إجمالي";
+"settings.stat.alltime" = "كل الأوقات";
+"settings.show.more" = "عرض المزيد";
+"settings.collapse" = "طي";
+"settings.categories" = "الفئات";
+"settings.signout.confirm" = "هل أنت متأكد من تسجيل الخروج؟";
+"settings.language.restart" = "إعادة تشغيل التطبيق";
+"settings.language.restart.msg" = "سيدخل تغيير اللغة حيز التنفيذ الكامل بعد إعادة تشغيل التطبيق.";
+"settings.language.later" = "لاحقاً";

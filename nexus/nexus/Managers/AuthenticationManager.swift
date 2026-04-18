@@ -228,6 +228,87 @@ final class AuthenticationManager: ObservableObject {
         #endif
     }
 
+    // MARK: - Change Email
+
+    func changeEmail(newEmail: String, currentPassword: String) async throws {
+        #if canImport(FirebaseAuth)
+        guard let user = Auth.auth().currentUser, let email = user.email else {
+            throw AuthError.unknownError
+        }
+        let credential = EmailAuthProvider.credential(withEmail: email, password: currentPassword)
+        try await user.reauthenticate(with: credential)
+        try await user.sendEmailVerification(beforeUpdatingEmail: newEmail)
+        #else
+        throw AuthError.firebaseNotAvailable
+        #endif
+    }
+
+    // MARK: - Change Password
+
+    func changePassword(currentPassword: String, newPassword: String) async throws {
+        #if canImport(FirebaseAuth)
+        guard let user = Auth.auth().currentUser, let email = user.email else {
+            throw AuthError.unknownError
+        }
+        let credential = EmailAuthProvider.credential(withEmail: email, password: currentPassword)
+        try await user.reauthenticate(with: credential)
+        try await user.updatePassword(to: newPassword)
+        #else
+        throw AuthError.firebaseNotAvailable
+        #endif
+    }
+
+    // MARK: - Linked Providers
+
+    var linkedProviders: [String] {
+        #if canImport(FirebaseAuth)
+        return Auth.auth().currentUser?.providerData.map { $0.providerID } ?? []
+        #else
+        return []
+        #endif
+    }
+
+    var hasEmailProvider: Bool { linkedProviders.contains("password") }
+    var hasAppleProvider: Bool { linkedProviders.contains("apple.com") }
+    var hasGoogleProvider: Bool { linkedProviders.contains("google.com") }
+    var hasPhoneProvider: Bool { linkedProviders.contains("phone") }
+
+    var linkedPhoneNumber: String? {
+        #if canImport(FirebaseAuth)
+        return Auth.auth().currentUser?.providerData
+            .first(where: { $0.providerID == "phone" })?.phoneNumber
+        #else
+        return nil
+        #endif
+    }
+
+    // MARK: - Phone Auth
+
+    #if canImport(FirebaseAuth)
+    /// Шаг 1: отправить SMS-код на номер телефона
+    func sendPhoneVerification(phone: String) async throws -> String {
+        let verificationId = try await PhoneAuthProvider.provider()
+            .verifyPhoneNumber(phone, uiDelegate: nil)
+        return verificationId
+    }
+
+    /// Шаг 2: привязать телефон к текущему аккаунту по коду из SMS
+    func linkPhone(verificationId: String, code: String) async throws {
+        guard let user = Auth.auth().currentUser else {
+            throw NSError(domain: "Auth", code: -1, userInfo: [NSLocalizedDescriptionKey: "Пользователь не авторизован"])
+        }
+        let credential = PhoneAuthProvider.provider().credential(
+            withVerificationID: verificationId,
+            verificationCode: code
+        )
+        // Если телефон уже привязан — обновляем (unlink + link)
+        if hasPhoneProvider {
+            _ = try await user.unlink(fromProvider: "phone")
+        }
+        _ = try await user.link(with: credential)
+    }
+    #endif
+
     // MARK: - Helpers
 
     var currentUserId: String? {

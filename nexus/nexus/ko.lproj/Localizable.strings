@@ -1,1 +1,214 @@
+/* Korean — Localizable.strings */
 
+// Tabs
+"tab.health" = "건강";
+"tab.finance" = "금융";
+"tab.ai" = "AI";
+"tab.learning" = "학습";
+"tab.settings" = "설정";
+
+// Settings
+"settings.title" = "설정";
+"settings.stats" = "통계";
+"settings.integrations" = "연동";
+"settings.security" = "보안 및 화면";
+"settings.theme" = "테마";
+"settings.language" = "언어";
+"settings.notifications" = "알림";
+"settings.faceid" = "Face ID / Touch ID";
+"settings.signout" = "로그아웃";
+"settings.rate" = "Nexus 평가하기";
+"settings.support" = "지원";
+"settings.feedback" = "피드백";
+"settings.cache" = "캐시 삭제";
+"settings.privacy" = "개인정보 처리방침";
+"settings.terms" = "이용 약관";
+
+// Profile
+"profile.title" = "프로필";
+"profile.firstname" = "이름";
+"profile.middlename" = "중간 이름";
+"profile.lastname" = "성";
+"profile.bio" = "소개";
+"profile.height" = "키";
+"profile.weight" = "체중";
+"profile.gender" = "성별";
+"profile.birthdate" = "생년월일";
+"profile.country" = "국가";
+"profile.city" = "도시";
+
+// Finance
+"finance.income" = "수입";
+"finance.expense" = "지출";
+"finance.balance" = "잔액";
+"finance.debt" = "부채";
+"finance.investments" = "투자";
+"finance.transactions" = "거래 내역";
+"finance.nodata" = "이 기간에 해당하는 거래가 없습니다";
+
+// Health
+"health.steps" = "걸음 수";
+"health.sleep" = "수면";
+"health.heartrate" = "심박수";
+"health.calories" = "칼로리";
+"health.water" = "수분";
+
+// AI
+"ai.title" = "AI 어시스턴트";
+"ai.newchat" = "새 채팅";
+"ai.history" = "기록";
+"ai.typing" = "입력 중...";
+"ai.copy" = "전체 복사";
+
+// Subscription
+"sub.title" = "Nexus Pro";
+"sub.monthly" = "월간";
+"sub.semiannual" = "반기";
+"sub.lifetime" = "평생";
+"sub.popular" = "인기";
+"sub.bestprice" = "최저가";
+"sub.continue" = "계속";
+"sub.restore" = "구매 복원";
+
+// Common
+"common.save" = "저장";
+"common.cancel" = "취소";
+"common.done" = "완료";
+"common.delete" = "삭제";
+"common.retry" = "재시도";
+"common.error" = "오류";
+"common.loading" = "로딩 중...";
+"common.search" = "검색";
+"common.connection_error" = "연결 오류";
+"common.check_internet" = "인터넷 연결을 확인해 주세요";
+"common.tap_retry" = "탭하여 재시도";
+
+// Auth
+"auth.login" = "로그인";
+"auth.register" = "회원가입";
+"auth.email" = "이메일";
+"auth.password" = "비밀번호";
+"auth.forgot" = "비밀번호를 잊으셨나요?";
+
+// FaceID Lock
+"faceid.locked" = "Nexus가 잠겨 있습니다";
+"faceid.unlock" = "잠금 해제";
+"faceid.use" = "Face ID로 잠금 해제";
+
+// Additional keys
+"settings.stats.detail" = "상세";
+"settings.units" = "단위";
+"settings.currency" = "통화";
+"settings.spotlight" = "Spotlight";
+"settings.account" = "계정";
+"settings.version" = "버전";
+"settings.share" = "공유";
+"settings.faq" = "FAQ";
+"settings.changelog" = "변경 이력";
+"profile.username" = "사용자명";
+"profile.race" = "인종";
+"profile.ethnicity" = "민족";
+"profile.diet" = "식단 유형";
+"profile.marital" = "결혼 여부";
+"profile.about" = "소개";
+"finance.title" = "금융";
+"finance.budget" = "예산";
+"health.title" = "건강";
+"sub.subtitle" = "앱의 모든 잠재력을 활용하세요";
+"sub.onetime" = "일회성 결제";
+"common.edit" = "편집";
+"common.enter" = "입력";
+"common.select" = "선택";
+"notif.morning" = "좋은 아침";
+"notif.morning.body" = "오늘의 브리핑이 준비되었습니다.";
+"notif.finance" = "금융";
+"notif.finance.body" = "오늘의 지출을 기록하세요.";
+"notif.health" = "건강";
+"notif.health.body" = "이번 주 건강 지표를 확인하세요.";
+
+// Auth screen
+"auth.google" = "Google로 로그인";
+"auth.email_login" = "이메일로 로그인";
+"auth.or" = "또는";
+"auth.phone" = "전화번호";
+"auth.no_account" = "계정이 없나요?";
+"auth.signup_action" = "가입하기";
+"auth.create" = "계정 만들기";
+"auth.confirm" = "확인";
+"auth.resend" = "재전송";
+"auth.code_sent" = "코드 전송됨";
+"auth.check_email" = "이메일을 확인하고 코드를 입력하세요.";
+
+"health.activity" = "활동";
+"health.weekly.steps" = "주간 걸음 수";
+"health.sleep.excellent" = "우수";
+"health.sleep.normal" = "보통";
+"health.sleep.poor" = "부족";
+"health.burned" = "kcal 소모";
+"health.weight" = "체중";
+"health.bloodpressure" = "혈압";
+"health.oxygen" = "산소포화도";
+"health.bpm" = "bpm";
+"health.hour" = "시간";
+"health.mmhg" = "mmHg";
+"health.min.label" = "최소";
+"health.max.label" = "최대";
+"health.goal.steps" = "목표: 10,000";
+"health.goal.water" = "목표: 2,000 ml";
+"health.goal.activity" = "목표: 30분";
+"weekday.mon" = "월";
+"weekday.tue" = "화";
+"weekday.wed" = "수";
+"weekday.thu" = "목";
+"weekday.fri" = "금";
+"weekday.sat" = "토";
+"weekday.sun" = "일";
+"finance.personal" = "개인";
+"finance.business" = "비즈니스";
+"finance.balance.label" = "잔액";
+"finance.budget.categories" = "카테고리별 예산";
+"finance.filter" = "필터";
+"finance.no.transactions" = "거래 없음";
+"finance.add" = "추가";
+"finance.edit.transaction" = "편집";
+"finance.new.transaction" = "새 거래";
+"finance.amount" = "금액";
+"finance.expense.label" = "지출";
+"finance.income.label" = "수입";
+"finance.name" = "이름";
+"finance.category" = "카테고리";
+"finance.subcategory" = "하위 카테고리";
+"finance.source" = "소스";
+"finance.date" = "날짜";
+"finance.delete.transaction" = "거래 삭제";
+"finance.of" = "중";
+"finance.show.more" = "더 보기";
+"finance.collapse" = "접기";
+"finance.what" = "이게 뭔가요?";
+"finance.reset" = "재설정";
+"finance.categories.label" = "카테고리";
+"learning.subtitle" = "계속 성장하세요";
+"learning.today" = "오늘";
+"learning.courses" = "강의";
+"learning.weekly" = "주간 활동";
+"ai.agent" = "에이전트:";
+"ai.info.title" = "AI 작동 방식";
+"ai.history.title" = "채팅 기록";
+"ai.history.empty" = "아직 기록이 없습니다. 새 대화를 시작하세요.";
+"ai.ok" = "알겠습니다";
+"ai.placeholder" = "메시지...";
+"ai.send" = "보내기";
+"settings.subscription.subtitle" = "무제한 AI, 분석, 알림";
+"settings.stat.days" = "앱 사용 일수";
+"settings.stat.ai" = "AI 세션";
+"settings.stat.health" = "건강 기록";
+"settings.stat.since" = "가입 이후";
+"settings.stat.total" = "전체";
+"settings.stat.alltime" = "전체 기간";
+"settings.show.more" = "더 보기";
+"settings.collapse" = "접기";
+"settings.categories" = "카테고리";
+"settings.signout.confirm" = "로그아웃하시겠습니까?";
+"settings.language.restart" = "앱 재시작";
+"settings.language.restart.msg" = "언어 변경은 앱 재시작 후 완전히 적용됩니다.";
+"settings.language.later" = "나중에";

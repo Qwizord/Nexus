@@ -10,6 +10,7 @@
 		CEBDB02C2F7906C800E65D74 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = CEBDB02B2F7906C800E65D74 /* FirebaseAuth */; };
 		CEBDB02E2F7906C800E65D74 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = CEBDB02D2F7906C800E65D74 /* FirebaseCore */; };
 		CEBDB0312F790A7B00E65D74 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = CEBDB0302F790A7B00E65D74 /* GoogleSignIn */; };
+		CEBDB15B2F7E163B00E65D74 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = CEBDB15A2F7E163B00E65D74 /* FirebaseFirestore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -83,6 +84,7 @@
 			isa = PBXFrameworksBuildPhase;
 			files = (
 				CEBDB02E2F7906C800E65D74 /* FirebaseCore in Frameworks */,
+				CEBDB15B2F7E163B00E65D74 /* FirebaseFirestore in Frameworks */,
 				CEBDB02C2F7906C800E65D74 /* FirebaseAuth in Frameworks */,
 				CEBDB0312F790A7B00E65D74 /* GoogleSignIn in Frameworks */,
 			);
@@ -100,12 +102,20 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		CEBDB1592F7E163B00E65D74 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		CED378782F655EBC00F0A4FC = {
 			isa = PBXGroup;
 			children = (
 				CED378832F655EBC00F0A4FC /* nexus */,
 				CED378912F655EBD00F0A4FC /* nexusTests */,
 				CED3789B2F655EBD00F0A4FC /* nexusUITests */,
+				CEBDB1592F7E163B00E65D74 /* Frameworks */,
 				CED378822F655EBC00F0A4FC /* Products */,
 			);
 			sourceTree = "<group>";
@@ -141,6 +151,7 @@
 				CEBDB02B2F7906C800E65D74 /* FirebaseAuth */,
 				CEBDB02D2F7906C800E65D74 /* FirebaseCore */,
 				CEBDB0302F790A7B00E65D74 /* GoogleSignIn */,
+				CEBDB15A2F7E163B00E65D74 /* FirebaseFirestore */,
 			);
 			productName = nexus;
 			productReference = CED378812F655EBC00F0A4FC /* nexus.app */;
@@ -433,6 +444,9 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 72FZY3BY9M;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = nexus/Info.plist;
@@ -445,21 +459,29 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = qwizord;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
+				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "appletvos appletvsimulator iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = "1,2,3";
+				TVOS_DEPLOYMENT_TARGET = 26.0;
 			};
 			name = Debug;
 		};
@@ -485,21 +507,28 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = qwizord;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "appletvos appletvsimulator iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = "1,2,3";
+				TVOS_DEPLOYMENT_TARGET = 26.0;
 			};
 			name = Release;
 		};
@@ -658,6 +687,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = CEBDB02F2F790A7B00E65D74 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
 			productName = GoogleSignIn;
+		};
+		CEBDB15A2F7E163B00E65D74 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = CEBDB02A2F7906C800E65D74 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

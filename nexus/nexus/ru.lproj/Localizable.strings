@@ -1,1 +1,307 @@
+/* Russian (Base) — Localizable.strings */
 
+// Tabs
+"tab.health" = "Здоровье";
+"tab.finance" = "Финансы";
+"tab.ai" = "AI";
+"tab.learning" = "Обучение";
+"tab.settings" = "Настройки";
+
+// Settings
+"settings.title" = "Настройки";
+"settings.stats" = "Статистика";
+"settings.stats.detail" = "Подробнее";
+"settings.integrations" = "Интеграции";
+"settings.security" = "Безопасность и оформление";
+"settings.theme" = "Тема";
+"settings.language" = "Язык";
+"settings.units" = "Единицы";
+"settings.currency" = "Валюта";
+"settings.notifications" = "Уведомления";
+"settings.spotlight" = "Spotlight";
+"settings.faceid" = "Face ID / Touch ID";
+"settings.account" = "Аккаунт";
+"settings.signout" = "Выйти";
+"settings.version" = "Версия";
+"settings.rate" = "Оценить Nexus";
+"settings.share" = "Поделиться";
+"settings.support" = "Поддержка";
+"settings.feedback" = "Обратная связь";
+"settings.cache" = "Очистить кэш";
+"settings.faq" = "FAQ";
+"settings.privacy" = "Политика конфиденциальности";
+"settings.terms" = "Условия использования";
+"settings.changelog" = "Журнал изменений";
+
+// Profile
+"profile.title" = "Профиль";
+"profile.firstname" = "Имя";
+"profile.middlename" = "Отчество";
+"profile.lastname" = "Фамилия";
+"profile.username" = "Username";
+"profile.bio" = "Биография";
+"profile.height" = "Рост";
+"profile.weight" = "Вес";
+"profile.gender" = "Пол";
+"profile.birthdate" = "Дата рождения";
+"profile.country" = "Страна";
+"profile.city" = "Город";
+"profile.race" = "Раса";
+"profile.ethnicity" = "Этнос / Национальность";
+"profile.diet" = "Тип питания";
+"profile.marital" = "Семейное положение";
+"profile.about" = "О себе";
+
+// Finance
+"finance.title" = "Финансы";
+"finance.income" = "Доход";
+"finance.expense" = "Расход";
+"finance.balance" = "Баланс";
+"finance.debt" = "Долги";
+"finance.investments" = "Инвестиции";
+"finance.transactions" = "Транзакции";
+"finance.budget" = "Бюджет";
+"finance.nodata" = "Нет операций за этот период";
+
+// Health
+"health.title" = "Здоровье";
+"health.steps" = "Шаги";
+"health.sleep" = "Сон";
+"health.heartrate" = "Пульс";
+"health.calories" = "Калории";
+"health.water" = "Вода";
+
+// AI
+"ai.title" = "AI-ассистент";
+"ai.newchat" = "Новый чат";
+"ai.history" = "История";
+"ai.typing" = "Печатает...";
+"ai.copy" = "Копировать всё";
+
+// Subscription
+"sub.title" = "Nexus Pro";
+"sub.subtitle" = "Раскройте весь потенциал приложения";
+"sub.monthly" = "Ежемесячно";
+"sub.semiannual" = "Полгода";
+"sub.lifetime" = "Навсегда";
+"sub.popular" = "Популярный";
+"sub.bestprice" = "Лучшая цена";
+"sub.continue" = "Продолжить";
+"sub.restore" = "Восстановить покупки";
+"sub.onetime" = "Одноразовый платёж";
+
+// Common
+"common.save" = "Сохранить";
+"common.cancel" = "Отмена";
+"common.done" = "Готово";
+"common.delete" = "Удалить";
+"common.edit" = "Редактировать";
+"common.retry" = "Повторить";
+"common.error" = "Ошибка";
+"common.loading" = "Загрузка...";
+"common.search" = "Поиск";
+"common.enter" = "Введите";
+"common.select" = "Выбрать";
+"common.connection_error" = "Ошибка соединения";
+"common.check_internet" = "Проверьте подключение к интернету";
+"common.tap_retry" = "Нажмите для повтора";
+
+// Auth
+"auth.login" = "Войти";
+"auth.register" = "Регистрация";
+"auth.email" = "Email";
+"auth.password" = "Пароль";
+"auth.forgot" = "Забыли пароль?";
+
+// FaceID Lock
+"faceid.locked" = "Nexus заблокирован";
+"faceid.unlock" = "Разблокировать";
+"faceid.use" = "Используйте Face ID для входа";
+
+// Notifications
+"notif.morning" = "Доброе утро";
+"notif.morning.body" = "Ваш ежедневный брифинг готов. Посмотрите план на день.";
+"notif.finance" = "Финансы";
+"notif.finance.body" = "Не забудьте записать расходы за сегодня.";
+"notif.health" = "Здоровье";
+"notif.health.body" = "Проверьте свои показатели здоровья на этой неделе.";
+
+// Auth screen
+"auth.google" = "Войти через Google";
+"auth.email_login" = "Войти по email";
+"auth.or" = "или";
+"auth.phone" = "По номеру телефона";
+"auth.no_account" = "Нет аккаунта?";
+"auth.signup_action" = "Зарегистрироваться";
+"auth.create" = "Создать аккаунт";
+"auth.confirm" = "Подтвердить";
+"auth.resend" = "Отправить снова";
+"auth.code_sent" = "Код отправлен на";
+"auth.check_email" = "Проверьте почту и введите код из письма.";
+
+// Health extended
+"health.activity" = "Активность";
+"health.weekly.steps" = "Шаги за неделю";
+"health.sleep.excellent" = "Отлично";
+"health.sleep.normal" = "Норма";
+"health.sleep.poor" = "Мало";
+"health.burned" = "ккал сожжено";
+"health.weight" = "Вес";
+"health.bloodpressure" = "Давление";
+"health.oxygen" = "Кислород";
+"health.bpm" = "уд/мин";
+"health.hour" = "ч";
+"health.mmhg" = "мм рт.ст.";
+"health.min.label" = "Мин";
+"health.max.label" = "Макс";
+"health.goal.steps" = "Цель: 10 000";
+"health.goal.water" = "Цель: 2 000 мл";
+"health.goal.activity" = "Цель: 30 мин";
+
+// Weekdays
+"weekday.mon" = "Пн";
+"weekday.tue" = "Вт";
+"weekday.wed" = "Ср";
+"weekday.thu" = "Чт";
+"weekday.fri" = "Пт";
+"weekday.sat" = "Сб";
+"weekday.sun" = "Вс";
+
+// Finance extended
+"finance.personal" = "Личные";
+"finance.business" = "Бизнес";
+"finance.balance.label" = "Остаток";
+"finance.budget.categories" = "Бюджет по категориям";
+"finance.filter" = "Фильтр";
+"finance.no.transactions" = "Нет операций";
+"finance.add" = "Добавить";
+"finance.edit.transaction" = "Редактировать";
+"finance.new.transaction" = "Новая операция";
+"finance.amount" = "Сумма";
+"finance.expense.label" = "Расход";
+"finance.income.label" = "Доход";
+"finance.name" = "Название";
+"finance.category" = "Категория";
+"finance.subcategory" = "Подкатегория";
+"finance.source" = "Источник";
+"finance.date" = "Дата";
+"finance.delete.transaction" = "Удалить операцию";
+"finance.of" = "из";
+"finance.show.more" = "Показать ещё";
+"finance.collapse" = "Скрыть";
+"finance.what" = "Что это?";
+"finance.reset" = "Сбросить";
+"finance.categories.label" = "Категории";
+
+// Learning
+"learning.subtitle" = "Продолжай расти";
+"learning.today" = "Сегодня";
+"learning.courses" = "Курсы";
+"learning.weekly" = "Активность за неделю";
+
+// AI extended
+"ai.agent" = "Агент:";
+"ai.info.title" = "Как работает AI";
+"ai.history.title" = "История чатов";
+"ai.history.empty" = "Пока нет истории. Начни новый диалог.";
+"ai.ok" = "Понятно";
+"ai.placeholder" = "Сообщение...";
+"ai.send" = "Отправить";
+
+// Settings extended
+"settings.subscription.subtitle" = "Безлимитный AI, аналитика, уведомления";
+"settings.stat.days" = "Дней в приложении";
+"settings.stat.ai" = "Сессий AI";
+"settings.stat.health" = "Записей о здоровье";
+"settings.stat.since" = "с момента регистрации";
+"settings.stat.total" = "создано всего";
+"settings.stat.alltime" = "за всё время";
+"settings.show.more" = "Показать ещё";
+"settings.collapse" = "Скрыть";
+"settings.categories" = "Категории";
+"settings.signout.confirm" = "Вы уверены, что хотите выйти?";
+
+// Health extended
+"health.activity" = "Активность";
+"health.weekly.steps" = "Шаги за неделю";
+"health.sleep.excellent" = "Отлично";
+"health.sleep.normal" = "Норма";
+"health.sleep.poor" = "Мало";
+"health.burned" = "ккал сожжено";
+"health.weight" = "Вес";
+"health.bloodpressure" = "Давление";
+"health.oxygen" = "Кислород";
+"health.bpm" = "уд/мин";
+"health.hour" = "ч";
+"health.mmhg" = "мм рт.ст.";
+"health.min.label" = "Мин";
+"health.max.label" = "Макс";
+"health.goal.steps" = "Цель: 10 000";
+"health.goal.water" = "Цель: 2 000 мл";
+"health.goal.activity" = "Цель: 30 мин";
+
+// Weekdays
+"weekday.mon" = "Пн";
+"weekday.tue" = "Вт";
+"weekday.wed" = "Ср";
+"weekday.thu" = "Чт";
+"weekday.fri" = "Пт";
+"weekday.sat" = "Сб";
+"weekday.sun" = "Вс";
+
+// Finance extended
+"finance.personal" = "Личные";
+"finance.business" = "Бизнес";
+"finance.balance.label" = "Остаток";
+"finance.budget.categories" = "Бюджет по категориям";
+"finance.filter" = "Фильтр";
+"finance.no.transactions" = "Нет операций";
+"finance.add" = "Добавить";
+"finance.edit.transaction" = "Редактировать";
+"finance.new.transaction" = "Новая операция";
+"finance.amount" = "Сумма";
+"finance.expense.label" = "Расход";
+"finance.income.label" = "Доход";
+"finance.name" = "Название";
+"finance.category" = "Категория";
+"finance.subcategory" = "Подкатегория";
+"finance.source" = "Источник";
+"finance.date" = "Дата";
+"finance.delete.transaction" = "Удалить операцию";
+"finance.of" = "из";
+"finance.show.more" = "Показать ещё";
+"finance.collapse" = "Скрыть";
+"finance.what" = "Что это?";
+"finance.reset" = "Сбросить";
+"finance.categories.label" = "Категории";
+
+// Learning
+"learning.subtitle" = "Продолжай расти";
+"learning.today" = "Сегодня";
+"learning.courses" = "Курсы";
+"learning.weekly" = "Активность за неделю";
+
+// AI extended
+"ai.agent" = "Агент:";
+"ai.info.title" = "Как работает AI";
+"ai.history.title" = "История чатов";
+"ai.history.empty" = "Пока нет истории. Начни новый диалог.";
+"ai.ok" = "Понятно";
+"ai.placeholder" = "Сообщение...";
+"ai.send" = "Отправить";
+
+// Settings extended
+"settings.subscription.subtitle" = "Безлимитный AI, аналитика, уведомления";
+"settings.stat.days" = "Дней в приложении";
+"settings.stat.ai" = "Сессий AI";
+"settings.stat.health" = "Записей о здоровье";
+"settings.stat.since" = "с момента регистрации";
+"settings.stat.total" = "создано всего";
+"settings.stat.alltime" = "за всё время";
+"settings.show.more" = "Показать ещё";
+"settings.collapse" = "Скрыть";
+"settings.categories" = "Категории";
+"settings.signout.confirm" = "Вы уверены, что хотите выйти?";
+"settings.language.restart" = "Перезапустить приложение";
+"settings.language.restart.msg" = "Смена языка полностью вступит в силу после перезапуска приложения.";
+"settings.language.later" = "Позже";

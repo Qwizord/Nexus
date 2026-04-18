@@ -1,1 +1,214 @@
+/* Simplified Chinese — Localizable.strings */
 
+// Tabs
+"tab.health" = "健康";
+"tab.finance" = "财务";
+"tab.ai" = "AI";
+"tab.learning" = "学习";
+"tab.settings" = "设置";
+
+// Settings
+"settings.title" = "设置";
+"settings.stats" = "统计";
+"settings.integrations" = "集成";
+"settings.security" = "安全与外观";
+"settings.theme" = "主题";
+"settings.language" = "语言";
+"settings.notifications" = "通知";
+"settings.faceid" = "Face ID / Touch ID";
+"settings.signout" = "退出登录";
+"settings.rate" = "为 Nexus 评分";
+"settings.support" = "支持";
+"settings.feedback" = "反馈";
+"settings.cache" = "清除缓存";
+"settings.privacy" = "隐私政策";
+"settings.terms" = "使用条款";
+
+// Profile
+"profile.title" = "个人资料";
+"profile.firstname" = "名";
+"profile.middlename" = "中间名";
+"profile.lastname" = "姓";
+"profile.bio" = "个人简介";
+"profile.height" = "身高";
+"profile.weight" = "体重";
+"profile.gender" = "性别";
+"profile.birthdate" = "出生日期";
+"profile.country" = "国家";
+"profile.city" = "城市";
+
+// Finance
+"finance.income" = "收入";
+"finance.expense" = "支出";
+"finance.balance" = "余额";
+"finance.debt" = "负债";
+"finance.investments" = "投资";
+"finance.transactions" = "交易记录";
+"finance.nodata" = "该时段暂无交易记录";
+
+// Health
+"health.steps" = "步数";
+"health.sleep" = "睡眠";
+"health.heartrate" = "心率";
+"health.calories" = "卡路里";
+"health.water" = "饮水";
+
+// AI
+"ai.title" = "AI 助手";
+"ai.newchat" = "新对话";
+"ai.history" = "历史记录";
+"ai.typing" = "输入中...";
+"ai.copy" = "全部复制";
+
+// Subscription
+"sub.title" = "Nexus Pro";
+"sub.monthly" = "月付";
+"sub.semiannual" = "半年付";
+"sub.lifetime" = "终身";
+"sub.popular" = "热门";
+"sub.bestprice" = "超值之选";
+"sub.continue" = "继续";
+"sub.restore" = "恢复购买";
+
+// Common
+"common.save" = "保存";
+"common.cancel" = "取消";
+"common.done" = "完成";
+"common.delete" = "删除";
+"common.retry" = "重试";
+"common.error" = "错误";
+"common.loading" = "加载中...";
+"common.search" = "搜索";
+"common.connection_error" = "连接错误";
+"common.check_internet" = "请检查您的网络连接";
+"common.tap_retry" = "点击重试";
+
+// Auth
+"auth.login" = "登录";
+"auth.register" = "注册";
+"auth.email" = "邮箱";
+"auth.password" = "密码";
+"auth.forgot" = "忘记密码？";
+
+// FaceID Lock
+"faceid.locked" = "Nexus 已锁定";
+"faceid.unlock" = "解锁";
+"faceid.use" = "使用 Face ID 解锁";
+
+// Additional keys
+"settings.stats.detail" = "详情";
+"settings.units" = "单位";
+"settings.currency" = "货币";
+"settings.spotlight" = "Spotlight";
+"settings.account" = "账户";
+"settings.version" = "版本";
+"settings.share" = "分享";
+"settings.faq" = "常见问题";
+"settings.changelog" = "更新日志";
+"profile.username" = "用户名";
+"profile.race" = "种族";
+"profile.ethnicity" = "民族";
+"profile.diet" = "饮食类型";
+"profile.marital" = "婚姻状况";
+"profile.about" = "关于我";
+"finance.title" = "财务";
+"finance.budget" = "预算";
+"health.title" = "健康";
+"sub.subtitle" = "解锁应用全部功能";
+"sub.onetime" = "一次性付款";
+"common.edit" = "编辑";
+"common.enter" = "输入";
+"common.select" = "选择";
+"notif.morning" = "早上好";
+"notif.morning.body" = "您的每日简报已准备好。";
+"notif.finance" = "财务";
+"notif.finance.body" = "别忘了记录今天的支出。";
+"notif.health" = "健康";
+"notif.health.body" = "查看本周的健康指标。";
+
+// Auth screen
+"auth.google" = "用Google登录";
+"auth.email_login" = "用邮箱登录";
+"auth.or" = "或";
+"auth.phone" = "电话号码";
+"auth.no_account" = "没有账户？";
+"auth.signup_action" = "注册";
+"auth.create" = "创建账户";
+"auth.confirm" = "确认";
+"auth.resend" = "重新发送";
+"auth.code_sent" = "验证码已发送至";
+"auth.check_email" = "请查看您的邮件并输入验证码。";
+
+"health.activity" = "活动";
+"health.weekly.steps" = "每周步数";
+"health.sleep.excellent" = "优秀";
+"health.sleep.normal" = "正常";
+"health.sleep.poor" = "不足";
+"health.burned" = "千卡消耗";
+"health.weight" = "体重";
+"health.bloodpressure" = "血压";
+"health.oxygen" = "血氧";
+"health.bpm" = "次/分";
+"health.hour" = "小时";
+"health.mmhg" = "mmHg";
+"health.min.label" = "最小";
+"health.max.label" = "最大";
+"health.goal.steps" = "目标：10,000";
+"health.goal.water" = "目标：2,000 毫升";
+"health.goal.activity" = "目标：30分钟";
+"weekday.mon" = "周一";
+"weekday.tue" = "周二";
+"weekday.wed" = "周三";
+"weekday.thu" = "周四";
+"weekday.fri" = "周五";
+"weekday.sat" = "周六";
+"weekday.sun" = "周日";
+"finance.personal" = "个人";
+"finance.business" = "商业";
+"finance.balance.label" = "余额";
+"finance.budget.categories" = "按类别预算";
+"finance.filter" = "筛选";
+"finance.no.transactions" = "暂无交易";
+"finance.add" = "添加";
+"finance.edit.transaction" = "编辑";
+"finance.new.transaction" = "新交易";
+"finance.amount" = "金额";
+"finance.expense.label" = "支出";
+"finance.income.label" = "收入";
+"finance.name" = "名称";
+"finance.category" = "类别";
+"finance.subcategory" = "子类别";
+"finance.source" = "来源";
+"finance.date" = "日期";
+"finance.delete.transaction" = "删除交易";
+"finance.of" = "共";
+"finance.show.more" = "显示更多";
+"finance.collapse" = "收起";
+"finance.what" = "这是什么？";
+"finance.reset" = "重置";
+"finance.categories.label" = "类别";
+"learning.subtitle" = "持续成长";
+"learning.today" = "今天";
+"learning.courses" = "课程";
+"learning.weekly" = "每周活动";
+"ai.agent" = "代理：";
+"ai.info.title" = "AI 工作原理";
+"ai.history.title" = "聊天记录";
+"ai.history.empty" = "暂无记录。开始新对话吧。";
+"ai.ok" = "明白了";
+"ai.placeholder" = "消息...";
+"ai.send" = "发送";
+"settings.subscription.subtitle" = "无限AI、分析、通知";
+"settings.stat.days" = "使用天数";
+"settings.stat.ai" = "AI会话";
+"settings.stat.health" = "健康记录";
+"settings.stat.since" = "自注册以来";
+"settings.stat.total" = "总计";
+"settings.stat.alltime" = "历史总计";
+"settings.show.more" = "显示更多";
+"settings.collapse" = "收起";
+"settings.categories" = "类别";
+"settings.signout.confirm" = "确定要退出登录吗？";
+"settings.language.restart" = "重启应用";
+"settings.language.restart.msg" = "语言更改将在重启应用后完全生效。";
+"settings.language.later" = "稍后";

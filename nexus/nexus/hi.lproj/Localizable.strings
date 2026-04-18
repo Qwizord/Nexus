@@ -1,1 +1,212 @@
+/* Tabs */
+"tab.health" = "स्वास्थ्य";
+"tab.finance" = "वित्त";
+"tab.ai" = "AI";
+"tab.learning" = "शिक्षा";
+"tab.settings" = "सेटिंग्स";
 
+/* Settings */
+"settings.title" = "सेटिंग्स";
+"settings.stats" = "आँकड़े";
+"settings.integrations" = "इंटीग्रेशन";
+"settings.security" = "सुरक्षा एवं रूपरेखा";
+"settings.theme" = "थीम";
+"settings.language" = "भाषा";
+"settings.notifications" = "सूचनाएँ";
+"settings.faceid" = "Face ID / Touch ID";
+"settings.signout" = "लॉग आउट";
+"settings.rate" = "Nexus को रेटिंग दें";
+"settings.support" = "सहायता";
+"settings.feedback" = "प्रतिक्रिया";
+"settings.cache" = "कैश साफ़ करें";
+"settings.privacy" = "गोपनीयता नीति";
+"settings.terms" = "उपयोग की शर्तें";
+
+/* Profile */
+"profile.title" = "प्रोफ़ाइल";
+"profile.firstname" = "पहला नाम";
+"profile.middlename" = "मध्य नाम";
+"profile.lastname" = "उपनाम";
+"profile.bio" = "परिचय";
+"profile.height" = "ऊँचाई";
+"profile.weight" = "वज़न";
+"profile.gender" = "लिंग";
+"profile.birthdate" = "जन्मतिथि";
+"profile.country" = "देश";
+"profile.city" = "शहर";
+
+/* Finance */
+"finance.income" = "आय";
+"finance.expense" = "व्यय";
+"finance.balance" = "शेष राशि";
+"finance.debt" = "ऋण";
+"finance.investments" = "निवेश";
+"finance.transactions" = "लेन-देन";
+"finance.nodata" = "इस अवधि में कोई लेन-देन नहीं";
+
+/* Health */
+"health.steps" = "कदम";
+"health.sleep" = "नींद";
+"health.heartrate" = "हृदय गति";
+"health.calories" = "कैलोरी";
+"health.water" = "पानी";
+
+/* AI Assistant */
+"ai.title" = "AI सहायक";
+"ai.newchat" = "नई चैट";
+"ai.history" = "इतिहास";
+"ai.typing" = "टाइप कर रहा है...";
+"ai.copy" = "सब कॉपी करें";
+
+/* Subscription */
+"sub.title" = "Nexus Pro";
+"sub.monthly" = "मासिक";
+"sub.semiannual" = "छमाही";
+"sub.lifetime" = "आजीवन";
+"sub.popular" = "लोकप्रिय";
+"sub.bestprice" = "सर्वोत्तम मूल्य";
+"sub.continue" = "जारी रखें";
+"sub.restore" = "खरीदारी पुनर्स्थापित करें";
+
+/* Common */
+"common.save" = "सहेजें";
+"common.cancel" = "रद्द करें";
+"common.done" = "हो गया";
+"common.delete" = "हटाएँ";
+"common.retry" = "पुनः प्रयास करें";
+"common.error" = "त्रुटि";
+"common.loading" = "लोड हो रहा है...";
+"common.search" = "खोजें";
+"common.connection_error" = "कनेक्शन त्रुटि";
+"common.check_internet" = "अपना इंटरनेट कनेक्शन जाँचें";
+"common.tap_retry" = "पुनः प्रयास के लिए टैप करें";
+
+/* Auth */
+"auth.login" = "लॉग इन करें";
+"auth.register" = "पंजीकरण करें";
+"auth.email" = "ईमेल";
+"auth.password" = "पासवर्ड";
+"auth.forgot" = "पासवर्ड भूल गए?";
+
+/* Face ID */
+"faceid.locked" = "Nexus लॉक है";
+"faceid.unlock" = "अनलॉक करें";
+"faceid.use" = "अनलॉक करने के लिए Face ID का उपयोग करें";
+
+// Additional keys
+"settings.stats.detail" = "विवरण";
+"settings.units" = "इकाइयाँ";
+"settings.currency" = "मुद्रा";
+"settings.spotlight" = "Spotlight";
+"settings.account" = "खाता";
+"settings.version" = "संस्करण";
+"settings.share" = "साझा करें";
+"settings.faq" = "सामान्य प्रश्न";
+"settings.changelog" = "परिवर्तन लॉग";
+"profile.username" = "उपयोगकर्ता नाम";
+"profile.race" = "नस्ल";
+"profile.ethnicity" = "जातीयता / राष्ट्रीयता";
+"profile.diet" = "आहार का प्रकार";
+"profile.marital" = "वैवाहिक स्थिति";
+"profile.about" = "मेरे बारे में";
+"finance.title" = "वित्त";
+"finance.budget" = "बजट";
+"health.title" = "स्वास्थ्य";
+"sub.subtitle" = "ऐप की पूरी क्षमता को अनलॉक करें";
+"sub.onetime" = "एकमुश्त भुगतान";
+"common.edit" = "संपादित करें";
+"common.enter" = "दर्ज करें";
+"common.select" = "चुनें";
+"notif.morning" = "सुप्रभात";
+"notif.morning.body" = "आपकी दैनिक ब्रीफिंग तैयार है।";
+"notif.finance" = "वित्त";
+"notif.finance.body" = "आज के खर्चे दर्ज करना न भूलें।";
+"notif.health" = "स्वास्थ्य";
+"notif.health.body" = "इस सप्ताह अपने स्वास्थ्य संकेतक जाँचें।";
+
+// Auth screen
+"auth.google" = "Google से साइन इन करें";
+"auth.email_login" = "ईमेल से साइन इन करें";
+"auth.or" = "या";
+"auth.phone" = "फोन नंबर";
+"auth.no_account" = "खाता नहीं है?";
+"auth.signup_action" = "साइन अप करें";
+"auth.create" = "खाता बनाएं";
+"auth.confirm" = "पुष्टि करें";
+"auth.resend" = "पुनः भेजें";
+"auth.code_sent" = "कोड भेजा गया";
+"auth.check_email" = "अपना ईमेल जांचें और कोड दर्ज करें।";
+
+"health.activity" = "गतिविधि";
+"health.weekly.steps" = "साप्ताहिक कदम";
+"health.sleep.excellent" = "उत्कृष्ट";
+"health.sleep.normal" = "सामान्य";
+"health.sleep.poor" = "कम";
+"health.burned" = "kcal जलाई";
+"health.weight" = "वजन";
+"health.bloodpressure" = "रक्तचाप";
+"health.oxygen" = "ऑक्सीजन";
+"health.bpm" = "bpm";
+"health.hour" = "घं";
+"health.mmhg" = "mmHg";
+"health.min.label" = "न्यून";
+"health.max.label" = "अधिक";
+"health.goal.steps" = "लक्ष्य: 10,000";
+"health.goal.water" = "लक्ष्य: 2,000 ml";
+"health.goal.activity" = "लक्ष्य: 30 मिनट";
+"weekday.mon" = "सोम";
+"weekday.tue" = "मंग";
+"weekday.wed" = "बुध";
+"weekday.thu" = "गुरु";
+"weekday.fri" = "शुक्र";
+"weekday.sat" = "शनि";
+"weekday.sun" = "रवि";
+"finance.personal" = "व्यक्तिगत";
+"finance.business" = "व्यवसाय";
+"finance.balance.label" = "शेष";
+"finance.budget.categories" = "श्रेणी अनुसार बजट";
+"finance.filter" = "फ़िल्टर";
+"finance.no.transactions" = "कोई लेनदेन नहीं";
+"finance.add" = "जोड़ें";
+"finance.edit.transaction" = "संपादित करें";
+"finance.new.transaction" = "नया लेनदेन";
+"finance.amount" = "राशि";
+"finance.expense.label" = "व्यय";
+"finance.income.label" = "आय";
+"finance.name" = "नाम";
+"finance.category" = "श्रेणी";
+"finance.subcategory" = "उपश्रेणी";
+"finance.source" = "स्रोत";
+"finance.date" = "तारीख";
+"finance.delete.transaction" = "लेनदेन हटाएं";
+"finance.of" = "में से";
+"finance.show.more" = "और दिखाएं";
+"finance.collapse" = "संकुचित करें";
+"finance.what" = "यह क्या है?";
+"finance.reset" = "रीसेट";
+"finance.categories.label" = "श्रेणियां";
+"learning.subtitle" = "बढ़ते रहें";
+"learning.today" = "आज";
+"learning.courses" = "पाठ्यक्रम";
+"learning.weekly" = "साप्ताहिक गतिविधि";
+"ai.agent" = "एजेंट:";
+"ai.info.title" = "AI कैसे काम करता है";
+"ai.history.title" = "चैट इतिहास";
+"ai.history.empty" = "अभी तक कोई इतिहास नहीं। नई बातचीत शुरू करें।";
+"ai.ok" = "समझ गया";
+"ai.placeholder" = "संदेश...";
+"ai.send" = "भेजें";
+"settings.subscription.subtitle" = "असीमित AI, विश्लेषण, सूचनाएं";
+"settings.stat.days" = "ऐप में दिन";
+"settings.stat.ai" = "AI सत्र";
+"settings.stat.health" = "स्वास्थ्य रिकॉर्ड";
+"settings.stat.since" = "पंजीकरण से";
+"settings.stat.total" = "कुल";
+"settings.stat.alltime" = "सभी समय";
+"settings.show.more" = "और दिखाएं";
+"settings.collapse" = "संकुचित करें";
+"settings.categories" = "श्रेणियां";
+"settings.signout.confirm" = "क्या आप वाकई साइन आउट करना चाहते हैं?";
+"settings.language.restart" = "ऐप पुनः प्रारंभ करें";
+"settings.language.restart.msg" = "भाषा परिवर्तन ऐप को पुनः प्रारंभ करने के बाद पूरी तरह लागू होगा।";
+"settings.language.later" = "बाद में";

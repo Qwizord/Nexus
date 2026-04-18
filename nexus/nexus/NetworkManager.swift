@@ -160,6 +160,89 @@ class NetworkManager: ObservableObject {
         return try JSONDecoder().decode(AIResponse.self, from: data)
     }
 
+    // MARK: - Email Verification Code
+
+    // Resend API key — получи бесплатно на resend.com (100 писем/день free tier)
+    // Вставь свой ключ сюда:
+    private let resendApiKey = "re_ВСТАВЬ_СВОЙ_КЛЮЧ"
+    // Домен отправителя — пока используем тестовый onboarding@resend.dev
+    // (работает без верификации домена, но только на адреса из аккаунта Resend)
+    // Для отправки на любой адрес — добавь свой домен в resend.com/domains
+    private let senderEmail = "Nexus <onboarding@resend.dev>"
+
+    /// Отправляет 6-значный код подтверждения через Resend API.
+    /// Fallback: если ключ не вставлен — пытается отправить через n8n.
+    func sendVerificationCode(email: String, code: String) async {
+        // Если Resend ключ вставлен — используем его
+        if !resendApiKey.hasPrefix("re_ВСТАВЬ") {
+            await sendViaResend(email: email, code: code)
+            return
+        }
+        // Fallback: n8n (если настроен)
+        if !baseURL.contains("YOUR_N8N") {
+            guard let url = try? buildURL("/send-verification-code") else { return }
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.timeoutInterval = 10
+            let body = ["email": email, "code": code, "appName": "Nexus"]
+            request.httpBody = try? JSONEncoder().encode(body)
+            _ = try? await URLSession.shared.data(for: request)
+        }
+        // Если ничего не настроено — код доступен только в консоли (DEBUG)
+        print("⚠️ Email не отправлен: вставь Resend API ключ в NetworkManager.swift")
+    }
+
+    private func sendViaResend(email: String, code: String) async {
+        guard let url = URL(string: "https://api.resend.com/emails") else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(resendApiKey)", forHTTPHeaderField: "Authorization")
+        request.timeoutInterval = 15
+
+        let subject = "Ваш код подтверждения Nexus"
+        let textBody = """
+        Ваш код подтверждения: \(code)
+
+        Код действителен 10 минут.
+        Если вы не регистрировались в Nexus — просто проигнорируйте это письмо.
+        """
+        let htmlBody = """
+        <div style="font-family:-apple-system,sans-serif;max-width:400px;margin:40px auto;padding:32px;background:#111;border-radius:16px;color:#fff">
+          <h2 style="margin:0 0 8px;font-size:24px">Nexus</h2>
+          <p style="color:#aaa;margin:0 0 32px;font-size:14px">Подтверждение email</p>
+          <div style="background:#1e1e2e;border-radius:12px;padding:24px;text-align:center;margin-bottom:24px">
+            <p style="margin:0 0 8px;color:#aaa;font-size:13px">Ваш код подтверждения</p>
+            <p style="margin:0;font-size:40px;font-weight:700;letter-spacing:8px;color:#fff">\(code)</p>
+          </div>
+          <p style="color:#666;font-size:12px;text-align:center;margin:0">Код действителен 10 минут</p>
+        </div>
+        """
+
+        let body: [String: Any] = [
+            "from": senderEmail,
+            "to": [email],
+            "subject": subject,
+            "text": textBody,
+            "html": htmlBody
+        ]
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            if let http = response as? HTTPURLResponse {
+                if http.statusCode == 200 {
+                    print("✅ Код отправлен на \(email) через Resend")
+                } else {
+                    let msg = String(data: data, encoding: .utf8) ?? "?"
+                    print("❌ Resend ошибка \(http.statusCode): \(msg)")
+                }
+            }
+        } catch {
+            print("❌ Resend сетевая ошибка: \(error)")
+        }
+    }
+
     // MARK: - Helpers
 
     private func buildURL(_ endpoint: String) throws -> URL {

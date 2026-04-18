@@ -97,10 +97,11 @@ class FirebaseChatRepository: ChatRepository {
 
         let sessionRef = db.collection("chat").document(userId).collection("sessions")
             .document(sessionId)
-        batch.updateData([
+        // merge:true — создаёт документ если его нет, обновляет поля если есть
+        batch.setData([
             "lastMessage": message.content,
             "updatedAt": ISO8601DateFormatter().string(from: message.timestamp)
-        ], forDocument: sessionRef)
+        ], forDocument: sessionRef, merge: true)
 
         try await batch.commit()
         #else

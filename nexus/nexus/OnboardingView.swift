@@ -10,11 +10,17 @@ struct OnboardingView: View {
     @State private var heightCm: Double = 175
     @State private var gender = "Не указан"
 
+    // Состояние ошибки имени
+    @State private var nameError = false
+    @State private var nameFieldShake = false
+    @FocusState private var nameFieldFocused: Bool
+
     private let totalSteps = 3
     private let genders = ["Мужской", "Женский", "Не указан"]
 
     var body: some View {
         ZStack {
+            Color(white: 0.12).ignoresSafeArea()
             VStack(spacing: 0) {
                 // Top bar
                 HStack {
@@ -50,6 +56,7 @@ struct OnboardingView: View {
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .animation(.spring(response: 0.5), value: step)
+                .scrollDisabled(true)
 
                 // Next button
                 Button {
@@ -61,13 +68,13 @@ struct OnboardingView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 18)
                         .background(
-                            canProceed
-                            ? LinearGradient(colors: [Color(red: 0.3, green: 0.4, blue: 1.0), Color(red: 0.5, green: 0.1, blue: 0.9)], startPoint: .leading, endPoint: .trailing)
-                            : LinearGradient(colors: [.white.opacity(0.1), .white.opacity(0.1)], startPoint: .leading, endPoint: .trailing),
-                            in: RoundedRectangle(cornerRadius: 18)
+                            LinearGradient(
+                                colors: [Color(red: 0.0, green: 0.48, blue: 1.0), Color(red: 0.34, green: 0.84, blue: 1.0)],
+                                startPoint: .leading, endPoint: .trailing
+                            ),
+                            in: Capsule()
                         )
                 }
-                .disabled(!canProceed)
                 .padding(.horizontal, 24)
                 .padding(.bottom, 40)
             }
@@ -90,7 +97,36 @@ struct OnboardingView: View {
             }
 
             VStack(spacing: 12) {
-                OnboardingField(placeholder: "Имя", text: $firstName)
+                // Поле имени с подсветкой ошибки
+                OnboardingField(
+                    placeholder: "Имя *",
+                    text: $firstName,
+                    hasError: nameError,
+                    isFocused: $nameFieldFocused
+                )
+                .offset(x: nameFieldShake ? -8 : 0)
+                .onChange(of: firstName) { _, _ in
+                    if nameError && !firstName.trimmingCharacters(in: .whitespaces).isEmpty {
+                        withAnimation(.spring(response: 0.3)) { nameError = false }
+                    }
+                }
+
+                // Подсказка об ошибке
+                if nameError {
+                    HStack(spacing: 6) {
+                        Image(systemName: "exclamationmark.circle.fill")
+                            .font(.system(size: 13))
+                            .foregroundStyle(Color(red: 1.0, green: 0.4, blue: 0.4))
+                        Text("Пожалуйста, введи имя")
+                            .font(.system(size: 13))
+                            .foregroundStyle(Color(red: 1.0, green: 0.4, blue: 0.4))
+                    }
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .top).combined(with: .opacity),
+                        removal: .opacity
+                    ))
+                }
+
                 OnboardingField(placeholder: "Фамилия", text: $lastName)
             }
 
@@ -200,12 +236,12 @@ struct OnboardingView: View {
                         .padding(18)
                         .background(
                             gender == g
-                            ? AnyShapeStyle(LinearGradient(colors: [Color(red: 0.3, green: 0.4, blue: 1.0).opacity(0.4), Color(red: 0.5, green: 0.1, blue: 0.9).opacity(0.3)], startPoint: .leading, endPoint: .trailing))
+                            ? AnyShapeStyle(LinearGradient(colors: [Color(red: 0.16, green: 0.53, blue: 1.0).opacity(0.55), Color(red: 0.14, green: 0.82, blue: 0.88).opacity(0.38)], startPoint: .leading, endPoint: .trailing))
                             : AnyShapeStyle(Material.ultraThinMaterial),
-                            in: RoundedRectangle(cornerRadius: 16)
+                            in: Capsule()
                         )
                         .overlay(
-                            RoundedRectangle(cornerRadius: 16)
+                            Capsule()
                                 .strokeBorder(gender == g ? .white.opacity(0.3) : .white.opacity(0.1), lineWidth: 0.5)
                         )
                     }
@@ -221,14 +257,13 @@ struct OnboardingView: View {
 
     // MARK: - Logic
 
-    var canProceed: Bool {
-        switch step {
-        case 0: return !firstName.trimmingCharacters(in: .whitespaces).isEmpty
-        default: return true
-        }
-    }
-
     func nextStep() {
+        // Всегда проверяем имя — на любом шаге
+        guard !firstName.trimmingCharacters(in: .whitespaces).isEmpty else {
+            triggerNameError()
+            return
+        }
+
         if step < totalSteps - 1 {
             withAnimation(.spring(response: 0.4)) { step += 1 }
         } else {
@@ -240,6 +275,25 @@ struct OnboardingView: View {
                 heightCm: heightCm,
                 gender: gender
             )
+        }
+    }
+
+    private func triggerNameError() {
+        // 1. Возвращаем на шаг с именем
+        withAnimation(.spring(response: 0.4)) { step = 0 }
+
+        // 2. Небольшая задержка, потом показываем ошибку и фокусируем поле
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            withAnimation(.spring(response: 0.3)) { nameError = true }
+            nameFieldFocused = true
+
+            // 3. Shake-анимация поля
+            withAnimation(.interpolatingSpring(stiffness: 600, damping: 10)) {
+                nameFieldShake = true
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                withAnimation { nameFieldShake = false }
+            }
         }
     }
 
@@ -256,18 +310,46 @@ struct OnboardingView: View {
 struct OnboardingField: View {
     let placeholder: String
     @Binding var text: String
+    var hasError: Bool = false
+    var isFocused: FocusState<Bool>.Binding? = nil
 
     var body: some View {
-        TextField(placeholder, text: $text)
-            .font(.system(size: 17))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 18)
-            .padding(.vertical, 16)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
-            .overlay(
-                RoundedRectangle(cornerRadius: 14)
-                    .strokeBorder(.white.opacity(0.15), lineWidth: 0.5)
-            )
-            .edgeSheen(cornerRadius: 14)
+        Group {
+            if let isFocused {
+                TextField(placeholder, text: $text)
+                    .font(.system(size: 17))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 16)
+                    .focused(isFocused)
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .overlay(
+                        Capsule()
+                            .strokeBorder(
+                                hasError
+                                    ? Color(red: 1.0, green: 0.4, blue: 0.4).opacity(0.8)
+                                    : .white.opacity(0.15),
+                                lineWidth: hasError ? 1.5 : 0.5
+                            )
+                    )
+            } else {
+                TextField(placeholder, text: $text)
+                    .font(.system(size: 17))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 16)
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .overlay(
+                        Capsule()
+                            .strokeBorder(.white.opacity(0.15), lineWidth: 0.5)
+                    )
+            }
+        }
+        // Красная подсветка фона при ошибке
+        .background(
+            Capsule()
+                .fill(hasError ? Color(red: 1.0, green: 0.3, blue: 0.3).opacity(0.08) : Color.clear)
+        )
+        .animation(.easeInOut(duration: 0.2), value: hasError)
     }
 }

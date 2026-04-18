@@ -1,1 +1,212 @@
+/* Tabs */
+"tab.health" = "Sağlık";
+"tab.finance" = "Finans";
+"tab.ai" = "YZ";
+"tab.learning" = "Öğrenme";
+"tab.settings" = "Ayarlar";
 
+/* Settings */
+"settings.title" = "Ayarlar";
+"settings.stats" = "İstatistikler";
+"settings.integrations" = "Entegrasyonlar";
+"settings.security" = "Güvenlik ve Görünüm";
+"settings.theme" = "Tema";
+"settings.language" = "Dil";
+"settings.notifications" = "Bildirimler";
+"settings.faceid" = "Face ID / Touch ID";
+"settings.signout" = "Çıkış Yap";
+"settings.rate" = "Nexus'u Değerlendir";
+"settings.support" = "Destek";
+"settings.feedback" = "Geri Bildirim";
+"settings.cache" = "Önbelleği Temizle";
+"settings.privacy" = "Gizlilik Politikası";
+"settings.terms" = "Kullanım Koşulları";
+
+/* Profile */
+"profile.title" = "Profil";
+"profile.firstname" = "Ad";
+"profile.middlename" = "İkinci Ad";
+"profile.lastname" = "Soyad";
+"profile.bio" = "Biyografi";
+"profile.height" = "Boy";
+"profile.weight" = "Kilo";
+"profile.gender" = "Cinsiyet";
+"profile.birthdate" = "Doğum Tarihi";
+"profile.country" = "Ülke";
+"profile.city" = "Şehir";
+
+/* Finance */
+"finance.income" = "Gelir";
+"finance.expense" = "Gider";
+"finance.balance" = "Bakiye";
+"finance.debt" = "Borç";
+"finance.investments" = "Yatırımlar";
+"finance.transactions" = "İşlemler";
+"finance.nodata" = "Bu dönem için işlem bulunmuyor";
+
+/* Health */
+"health.steps" = "Adımlar";
+"health.sleep" = "Uyku";
+"health.heartrate" = "Nabız";
+"health.calories" = "Kalori";
+"health.water" = "Su";
+
+/* AI Assistant */
+"ai.title" = "YZ Asistan";
+"ai.newchat" = "Yeni Sohbet";
+"ai.history" = "Geçmiş";
+"ai.typing" = "Yazıyor...";
+"ai.copy" = "Tümünü Kopyala";
+
+/* Subscription */
+"sub.title" = "Nexus Pro";
+"sub.monthly" = "Aylık";
+"sub.semiannual" = "6 Aylık";
+"sub.lifetime" = "Ömür Boyu";
+"sub.popular" = "Popüler";
+"sub.bestprice" = "En İyi Fiyat";
+"sub.continue" = "Devam Et";
+"sub.restore" = "Satın Alımları Geri Yükle";
+
+/* Common */
+"common.save" = "Kaydet";
+"common.cancel" = "İptal";
+"common.done" = "Tamam";
+"common.delete" = "Sil";
+"common.retry" = "Tekrar Dene";
+"common.error" = "Hata";
+"common.loading" = "Yükleniyor...";
+"common.search" = "Ara";
+"common.connection_error" = "Bağlantı Hatası";
+"common.check_internet" = "İnternet bağlantınızı kontrol edin";
+"common.tap_retry" = "Tekrar denemek için dokunun";
+
+/* Auth */
+"auth.login" = "Giriş Yap";
+"auth.register" = "Kayıt Ol";
+"auth.email" = "E-posta";
+"auth.password" = "Şifre";
+"auth.forgot" = "Şifrenizi mi unuttunuz?";
+
+/* Face ID */
+"faceid.locked" = "Nexus Kilitli";
+"faceid.unlock" = "Kilidi Aç";
+"faceid.use" = "Açmak için Face ID kullanın";
+
+// Additional keys
+"settings.stats.detail" = "Ayrıntılar";
+"settings.units" = "Birimler";
+"settings.currency" = "Para Birimi";
+"settings.spotlight" = "Spotlight";
+"settings.account" = "Hesap";
+"settings.version" = "Sürüm";
+"settings.share" = "Paylaş";
+"settings.faq" = "SSS";
+"settings.changelog" = "Değişiklik Günlüğü";
+"profile.username" = "Kullanıcı adı";
+"profile.race" = "Irk";
+"profile.ethnicity" = "Etnik köken / Milliyet";
+"profile.diet" = "Beslenme tipi";
+"profile.marital" = "Medeni durum";
+"profile.about" = "Hakkımda";
+"finance.title" = "Finans";
+"finance.budget" = "Bütçe";
+"health.title" = "Sağlık";
+"sub.subtitle" = "Uygulamanın tüm potansiyelini açın";
+"sub.onetime" = "Tek seferlik ödeme";
+"common.edit" = "Düzenle";
+"common.enter" = "Girin";
+"common.select" = "Seçin";
+"notif.morning" = "Günaydın";
+"notif.morning.body" = "Günlük brifing hazır.";
+"notif.finance" = "Finans";
+"notif.finance.body" = "Bugünkü harcamaları kaydetmeyi unutmayın.";
+"notif.health" = "Sağlık";
+"notif.health.body" = "Bu hafta sağlık göstergelerinizi kontrol edin.";
+
+// Auth screen
+"auth.google" = "Google ile giriş yap";
+"auth.email_login" = "E-posta ile giriş yap";
+"auth.or" = "veya";
+"auth.phone" = "Telefon numarası";
+"auth.no_account" = "Hesabınız yok mu?";
+"auth.signup_action" = "Kayıt ol";
+"auth.create" = "Hesap oluştur";
+"auth.confirm" = "Onayla";
+"auth.resend" = "Tekrar gönder";
+"auth.code_sent" = "Kod gönderildi";
+"auth.check_email" = "E-postanızı kontrol edin ve kodu girin.";
+
+"health.activity" = "Aktivite";
+"health.weekly.steps" = "Haftalık Adımlar";
+"health.sleep.excellent" = "Mükemmel";
+"health.sleep.normal" = "Normal";
+"health.sleep.poor" = "Az";
+"health.burned" = "kcal yakıldı";
+"health.weight" = "Kilo";
+"health.bloodpressure" = "Tansiyon";
+"health.oxygen" = "Oksijen";
+"health.bpm" = "atım/dk";
+"health.hour" = "sa";
+"health.mmhg" = "mmHg";
+"health.min.label" = "Min";
+"health.max.label" = "Max";
+"health.goal.steps" = "Hedef: 10.000";
+"health.goal.water" = "Hedef: 2.000 ml";
+"health.goal.activity" = "Hedef: 30 dk";
+"weekday.mon" = "Pzt";
+"weekday.tue" = "Sal";
+"weekday.wed" = "Çar";
+"weekday.thu" = "Per";
+"weekday.fri" = "Cum";
+"weekday.sat" = "Cmt";
+"weekday.sun" = "Paz";
+"finance.personal" = "Kişisel";
+"finance.business" = "İş";
+"finance.balance.label" = "Bakiye";
+"finance.budget.categories" = "Kategorilere Göre Bütçe";
+"finance.filter" = "Filtre";
+"finance.no.transactions" = "İşlem yok";
+"finance.add" = "Ekle";
+"finance.edit.transaction" = "Düzenle";
+"finance.new.transaction" = "Yeni İşlem";
+"finance.amount" = "Tutar";
+"finance.expense.label" = "Gider";
+"finance.income.label" = "Gelir";
+"finance.name" = "Ad";
+"finance.category" = "Kategori";
+"finance.subcategory" = "Alt kategori";
+"finance.source" = "Kaynak";
+"finance.date" = "Tarih";
+"finance.delete.transaction" = "İşlemi Sil";
+"finance.of" = "/";
+"finance.show.more" = "Daha fazla göster";
+"finance.collapse" = "Daralt";
+"finance.what" = "Bu ne?";
+"finance.reset" = "Sıfırla";
+"finance.categories.label" = "Kategoriler";
+"learning.subtitle" = "Büyümeye devam et";
+"learning.today" = "Bugün";
+"learning.courses" = "Kurslar";
+"learning.weekly" = "Haftalık Aktivite";
+"ai.agent" = "Ajan:";
+"ai.info.title" = "AI Nasıl Çalışır";
+"ai.history.title" = "Sohbet Geçmişi";
+"ai.history.empty" = "Henüz geçmiş yok. Yeni bir sohbet başlatın.";
+"ai.ok" = "Anladım";
+"ai.placeholder" = "Mesaj...";
+"ai.send" = "Gönder";
+"settings.subscription.subtitle" = "Sınırsız AI, analitik, bildirimler";
+"settings.stat.days" = "Uygulamadaki gün";
+"settings.stat.ai" = "AI Oturumları";
+"settings.stat.health" = "Sağlık Kayıtları";
+"settings.stat.since" = "kayıttan beri";
+"settings.stat.total" = "toplam";
+"settings.stat.alltime" = "tüm zamanlar";
+"settings.show.more" = "Daha fazla göster";
+"settings.collapse" = "Daralt";
+"settings.categories" = "Kategoriler";
+"settings.signout.confirm" = "Çıkış yapmak istediğinizden emin misiniz?";
+"settings.language.restart" = "Uygulamayı Yeniden Başlat";
+"settings.language.restart.msg" = "Dil değişikliği uygulama yeniden başlatıldıktan sonra tamamen etkin olacak.";
+"settings.language.later" = "Sonra";

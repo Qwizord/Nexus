@@ -4,6 +4,7 @@ import Combine
 
 struct HealthView: View {
     @StateObject private var vm = HealthViewModel()
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -22,10 +23,11 @@ struct HealthView: View {
                 Spacer(minLength: 50)
             }
             .padding(.horizontal, 16)
-            .padding(.top, 60)
+            .padding(.top, verticalSizeClass == .compact ? 25 : 25)
         }
         .onAppear { vm.startListening() }
         .onDisappear { vm.stopListening() }
+        .refreshable { vm.refresh() }
     }
 
     // MARK: - Sections
@@ -33,7 +35,7 @@ struct HealthView: View {
     var headerSection: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Здоровье")
+                Text(L("health.title"))
                     .font(.system(size: 32, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
                 Text(Date().formatted(date: .long, time: .omitted))
@@ -65,33 +67,33 @@ struct HealthView: View {
             HealthMetricCard(
                 icon: "figure.walk",
                 iconColor: Color(red: 0.3, green: 0.7, blue: 1.0),
-                title: "Шаги",
+                title: L("health.steps"),
                 value: vm.steps.formatted(),
-                subtitle: "Цель: 10 000",
+                subtitle: L("health.goal.steps"),
                 progress: min(Double(vm.steps) / 10000, 1.0)
             )
             HealthMetricCard(
                 icon: "flame.fill",
                 iconColor: .orange,
-                title: "Калории",
+                title: L("health.calories"),
                 value: "\(Int(vm.calories))",
-                subtitle: "ккал сожжено",
+                subtitle: L("health.burned"),
                 progress: min(vm.calories / 600, 1.0)
             )
             HealthMetricCard(
                 icon: "drop.fill",
                 iconColor: Color(red: 0.2, green: 0.6, blue: 1.0),
-                title: "Вода",
+                title: L("health.water"),
                 value: "\(Int(vm.waterMl)) мл",
-                subtitle: "Цель: 2 000 мл",
+                subtitle: L("health.goal.water"),
                 progress: min(vm.waterMl / 2000, 1.0)
             )
             HealthMetricCard(
                 icon: "bolt.fill",
                 iconColor: .yellow,
-                title: "Активность",
+                title: L("health.activity"),
                 value: "\(vm.activeMinutes) мин",
-                subtitle: "Цель: 30 мин",
+                subtitle: L("health.goal.activity"),
                 progress: min(Double(vm.activeMinutes) / 30, 1.0)
             )
         }
@@ -101,18 +103,18 @@ struct HealthView: View {
         GlassSection {
             HStack {
                 VStack(alignment: .leading, spacing: 6) {
-                    Label("Пульс", systemImage: "heart.fill")
+                    Label(L("health.heartrate"), systemImage: "heart.fill")
                         .font(.system(size: 13))
                         .foregroundStyle(.pink.opacity(0.8))
                     HStack(alignment: .lastTextBaseline, spacing: 4) {
                         Text("\(vm.heartRateAvg)")
                             .font(.system(size: 40, weight: .bold, design: .rounded))
                             .foregroundStyle(.white)
-                        Text("уд/мин")
+                        Text(L("health.bpm"))
                             .font(.system(size: 14))
                             .foregroundStyle(.white.opacity(0.5))
                     }
-                    Text("Мин \(vm.heartRateMin) · Макс \(vm.heartRateMax)")
+                    Text("\(L("health.min.label")) \(vm.heartRateMin) · \(L("health.max.label")) \(vm.heartRateMax)")
                         .font(.system(size: 12))
                         .foregroundStyle(.white.opacity(0.4))
                 }
@@ -127,7 +129,7 @@ struct HealthView: View {
     var sleepCard: some View {
         GlassSection {
             VStack(alignment: .leading, spacing: 12) {
-                Label("Сон", systemImage: "moon.fill")
+                Label(L("health.sleep"), systemImage: "moon.fill")
                     .font(.system(size: 13))
                     .foregroundStyle(Color(red: 0.5, green: 0.4, blue: 1.0))
 
@@ -135,11 +137,11 @@ struct HealthView: View {
                     Text(String(format: "%.1f", vm.sleepHours))
                         .font(.system(size: 40, weight: .bold, design: .rounded))
                         .foregroundStyle(.white)
-                    Text("ч")
+                    Text(L("health.hour"))
                         .font(.system(size: 14))
                         .foregroundStyle(.white.opacity(0.5))
                     Spacer()
-                    Text(vm.sleepHours >= 7 ? "Отлично" : vm.sleepHours >= 6 ? "Норма" : "Мало")
+                    Text(vm.sleepHours >= 7 ? L("health.sleep.excellent") : vm.sleepHours >= 6 ? L("health.sleep.normal") : L("health.sleep.poor"))
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(vm.sleepHours >= 7 ? .green : vm.sleepHours >= 6 ? .yellow : .red)
                         .padding(.horizontal, 10)
@@ -172,7 +174,7 @@ struct HealthView: View {
                 GlassSection {
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
-                            Label("Вес", systemImage: "scalemass.fill")
+                            Label(L("health.weight"), systemImage: "scalemass.fill")
                                 .font(.system(size: 13))
                                 .foregroundStyle(.cyan.opacity(0.8))
                             HStack(alignment: .lastTextBaseline, spacing: 4) {
@@ -193,13 +195,13 @@ struct HealthView: View {
                 if let sys = vm.bloodPressureSystolic, let dia = vm.bloodPressureDiastolic {
                     GlassSection {
                         VStack(alignment: .leading, spacing: 4) {
-                            Label("Давление", systemImage: "heart.circle.fill")
+                            Label(L("health.bloodpressure"), systemImage: "heart.circle.fill")
                                 .font(.system(size: 12))
                                 .foregroundStyle(.red.opacity(0.7))
                             Text("\(sys)/\(dia)")
                                 .font(.system(size: 24, weight: .bold, design: .rounded))
                                 .foregroundStyle(.white)
-                            Text("мм рт.ст.")
+                            Text(L("health.mmhg"))
                                 .font(.system(size: 11))
                                 .foregroundStyle(.white.opacity(0.4))
                         }
@@ -209,7 +211,7 @@ struct HealthView: View {
                 if let oxygen = vm.oxygenSaturation {
                     GlassSection {
                         VStack(alignment: .leading, spacing: 4) {
-                            Label("Кислород", systemImage: "lungs.fill")
+                            Label(L("health.oxygen"), systemImage: "lungs.fill")
                                 .font(.system(size: 12))
                                 .foregroundStyle(.blue.opacity(0.7))
                             Text("\(Int(oxygen * 100))%")
@@ -228,7 +230,7 @@ struct HealthView: View {
     var weeklyStepsCard: some View {
         GlassSection {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Шаги за неделю")
+                Text(L("health.weekly.steps"))
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(.white.opacity(0.7))
 
@@ -237,6 +239,7 @@ struct HealthView: View {
                         let maxSteps = vm.weeklySteps.max() ?? 1
                         let height = max(6, CGFloat(steps) / CGFloat(maxSteps) * 80)
                         let isToday = idx == vm.weeklySteps.count - 1
+                        let weekdays = [L("weekday.mon"), L("weekday.tue"), L("weekday.wed"), L("weekday.thu"), L("weekday.fri"), L("weekday.sat"), L("weekday.sun")]
 
                         VStack(spacing: 4) {
                             RoundedRectangle(cornerRadius: 4)
@@ -246,7 +249,7 @@ struct HealthView: View {
                                 )
                                 .frame(maxWidth: .infinity, minHeight: height, maxHeight: height)
 
-                            Text(["Пн","Вт","Ср","Чт","Пт","Сб","Вс"][idx])
+                            Text(weekdays[idx])
                                 .font(.system(size: 10))
                                 .foregroundStyle(isToday ? .white : .white.opacity(0.3))
                         }

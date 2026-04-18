@@ -87,18 +87,24 @@ class FirebaseUserRepository: UserRepository {
         var data: [String: Any] = [
             "firstName": profile.firstName,
             "lastName": profile.lastName,
+            "middleName": profile.middleName,
+            "username": profile.username,
+            "bio": profile.bio,
             "email": profile.email,
             "birthDate": ISO8601DateFormatter().string(from: profile.birthDate),
             "weightKg": profile.weightKg,
             "heightCm": profile.heightCm,
             "gender": profile.gender,
+            "race": profile.race,
+            "ethnicity": profile.ethnicity,
+            "dietType": profile.dietType,
+            "maritalStatus": profile.maritalStatus,
+            "country": profile.country,
+            "city": profile.city,
             "createdAt": ISO8601DateFormatter().string(from: profile.createdAt),
             "subscriptionActive": profile.subscriptionActive
         ]
         if let phone = profile.phone { data["phone"] = phone }
-        if let avatarData = profile.avatarData {
-            data["avatarBase64"] = avatarData.base64EncodedString()
-        }
         return data
     }
 
@@ -107,11 +113,20 @@ class FirebaseUserRepository: UserRepository {
             id: userId,
             firstName: data["firstName"] as? String ?? "",
             lastName: data["lastName"] as? String ?? "",
+            middleName: data["middleName"] as? String ?? "",
+            username: data["username"] as? String ?? "",
+            bio: data["bio"] as? String ?? "",
             email: data["email"] as? String ?? "",
             birthDate: parseDate(data["birthDate"] as? String),
             weightKg: data["weightKg"] as? Double ?? 70,
             heightCm: data["heightCm"] as? Double ?? 175,
-            gender: data["gender"] as? String ?? "Не указан"
+            gender: data["gender"] as? String ?? "Не указан",
+            race: data["race"] as? String ?? "",
+            ethnicity: data["ethnicity"] as? String ?? "",
+            dietType: data["dietType"] as? String ?? "",
+            maritalStatus: data["maritalStatus"] as? String ?? "",
+            country: data["country"] as? String ?? "",
+            city: data["city"] as? String ?? ""
         )
         profile.phone = data["phone"] as? String
         profile.subscriptionActive = data["subscriptionActive"] as? Bool ?? false
@@ -125,12 +140,18 @@ class FirebaseUserRepository: UserRepository {
         [
             "theme": settings.theme.rawValue,
             "language": settings.language,
+            "measurementSystem": settings.measurementSystem.rawValue,
+            "timezone": settings.timezone,
             "notificationsEnabled": settings.notificationsEnabled,
             "healthKitConnected": settings.healthKitConnected,
             "ouraConnected": settings.ouraConnected,
             "garminConnected": settings.gaminConnected,
             "whoopConnected": settings.whoopConnected,
-            "currency": settings.currency
+            "currency": settings.currency,
+            "spotlightEnabled": settings.spotlightEnabled,
+            "calendarEnabled": settings.calendarEnabled,
+            "iCloudEnabled": settings.iCloudEnabled,
+            "faceIDEnabled": settings.faceIDEnabled
         ]
     }
 
@@ -141,12 +162,21 @@ class FirebaseUserRepository: UserRepository {
             settings.theme = appTheme
         }
         settings.language = data["language"] as? String ?? "ru_RU"
+        if let ms = data["measurementSystem"] as? String,
+           let sys = MeasurementSystem(rawValue: ms) {
+            settings.measurementSystem = sys
+        }
+        settings.timezone = data["timezone"] as? String ?? "Europe/Moscow"
         settings.notificationsEnabled = data["notificationsEnabled"] as? Bool ?? true
         settings.healthKitConnected = data["healthKitConnected"] as? Bool ?? false
         settings.ouraConnected = data["ouraConnected"] as? Bool ?? false
         settings.gaminConnected = data["garminConnected"] as? Bool ?? false
         settings.whoopConnected = data["whoopConnected"] as? Bool ?? false
         settings.currency = data["currency"] as? String ?? "RUB"
+        settings.spotlightEnabled = data["spotlightEnabled"] as? Bool ?? true
+        settings.calendarEnabled = data["calendarEnabled"] as? Bool ?? false
+        settings.iCloudEnabled = data["iCloudEnabled"] as? Bool ?? false
+        settings.faceIDEnabled = data["faceIDEnabled"] as? Bool ?? false
         return settings
     }
 
