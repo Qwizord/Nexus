@@ -329,6 +329,7 @@ struct SettingsView: View {
     @State private var showLanguageAlert  = false
     @State private var showPrivacyOverlay = false
     @State private var showInfoSheet: InfoSheetKind? = nil
+    @State private var showFeedback      = false
     @State private var copiedID = false
 
     enum InfoSheetKind: Identifiable {
@@ -535,6 +536,9 @@ struct SettingsView: View {
                 .presentationDragIndicator(.hidden)
         }
         .sheet(isPresented: $showShareSheet) { ShareSheet(activityItems: ["Я использую Nexus!"]) }
+        .sheet(isPresented: $showFeedback) {
+            FeedbackView().environmentObject(appState)
+        }
         .sheet(item: $selectedIntegration) { item in
             IntegrationDetailSheet(
                 integration: item,
@@ -1260,7 +1264,9 @@ struct SettingsView: View {
     private var supportInfoSection: some View {
         NXSection(title: "Поддержка и информация") {
             // Write to support
-            actionRow(icon: "bubble.left.fill", bg: .blue.opacity(0.8), title: "Написать в поддержку") { }
+            actionRow(icon: "bubble.left.fill", bg: .blue.opacity(0.8), title: "Написать в поддержку") {
+                showFeedback = true
+            }
             NXDivider()
 
             // «Поддержать проект» убран: вместо него будет подписка (см. плитку над профилем).

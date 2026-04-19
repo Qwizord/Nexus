@@ -1,10 +1,15 @@
 import SwiftUI
 
-// MARK: - Feedback View (Sheet)
+// MARK: - Feedback View (Support Screen)
+//
+// Screen (presented как `.sheet`) со списком тикетов и формой нового обращения.
+// Полностью адаптивный (light/dark), использует accent-gradient и glass cards
+// — визуально один к одному с остальными шагами Settings.
 
 struct FeedbackView: View {
     @EnvironmentObject private var appState: AppState
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var cs
 
     @State private var tickets: [FeedbackTicket] = []
     @State private var isLoading = false
@@ -14,106 +19,160 @@ struct FeedbackView: View {
     @State private var sendError: String?
     @State private var sendSuccess = false
 
+    // MARK: Design tokens (локальные, чтобы не зависеть от приватного SettingsView.DS)
+    private let accent1 = Color(red: 0.0, green: 0.48, blue: 1.0)   // #0077FF
+    private let accent2 = Color(red: 0.0, green: 0.90, blue: 1.0)   // #00E5FF
+    private var accentGrad: LinearGradient {
+        LinearGradient(colors: [accent1, accent2],
+                       startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
+    private let hPad: CGFloat = 16
+
+    private var fg: Color {
+        cs == .dark ? .white : Color(red: 0.11, green: 0.11, blue: 0.14)
+    }
+    private var bg: Color { cs == .dark ? .black : .white }
+    private var stroke: Color {
+        cs == .dark ? Color.white.opacity(0.10) : Color.black.opacity(0.07)
+    }
+
     private var userId: String? { appState.userProfile?.id }
     private var userName: String { appState.userProfile?.fullName ?? "Пользователь" }
 
+    private var openCount: Int { tickets.filter { $0.status == .open }.count }
+    private var answeredCount: Int { tickets.filter { $0.status == .answered }.count }
+
+    // MARK: - Body
+
     var body: some View {
-        ZStack {
-            Color(red: 0.07, green: 0.07, blue: 0.09).ignoresSafeArea()
-            VStack(spacing: 0) {
-                // Handle
-                Capsule().fill(.white.opacity(0.15)).frame(width: 36, height: 4).padding(.top, 12)
+        NavigationStack {
+            ZStack {
+                bg.ignoresSafeArea()
 
-                // Header
-                HStack {
-                    Text("Обратная связь")
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-                    Spacer()
-                    Button {
-                        showNewTicket.toggle()
-                    } label: {
-                        Image(systemName: showNewTicket ? "xmark.circle.fill" : "plus.circle.fill")
-                            .font(.system(size: 26))
-                            .foregroundStyle(showNewTicket ? .white.opacity(0.4) : Color(red: 0.4, green: 0.6, blue: 1.0))
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 20) {
+                        headerCard
+                        if showNewTicket { newTicketCard }
+                        ticketsList
+                        Spacer(minLength: 40)
                     }
-                    .buttonStyle(.plain)
+                    .padding(.horizontal, hPad)
+                    .padding(.top, 8)
+                    .padding(.bottom, 24)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-                .padding(.bottom, 12)
-
-                // New ticket form
-                if showNewTicket {
-                    newTicketForm
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 12)
-                        .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+            .animation(.spring(response: 0.4, dampingFraction: 0.85), value: showNewTicket)
+            .navigationTitle("Поддержка")
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Закрыть") { dismiss() }
+                        .foregroundStyle(fg.opacity(0.6))
                 }
-
-                Divider().background(.white.opacity(0.08))
-
-                // Tickets list
-                if isLoading {
-                    Spacer()
-                    ProgressView().tint(.white.opacity(0.4))
-                    Spacer()
-                } else if tickets.isEmpty {
-                    emptyState
-                } else {
-                    ScrollView(showsIndicators: false) {
-                        LazyVStack(spacing: 10) {
-                            ForEach(tickets) { ticket in
-                                TicketCard(ticket: ticket)
-                            }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                            showNewTicket.toggle()
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.top, 16)
-                        .padding(.bottom, 40)
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    } label: {
+                        Image(systemName: showNewTicket ? "xmark" : "plus")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 32, height: 32)
+                            .background(accentGrad, in: Circle())
                     }
                 }
             }
         }
-        .animation(.spring(response: 0.35), value: showNewTicket)
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.hidden)
         .task { await loadTickets() }
     }
 
-    // MARK: - New Ticket Form
+    // MARK: - Header card (summary)
 
-    var newTicketForm: some View {
-        VStack(spacing: 12) {
+    private var headerCard: some View {
+        HStack(spacing: 12) {
+            // Animated glowing icon
+            ZStack {
+                Circle().fill(accentGrad).frame(width: 46, height: 46)
+                    .blur(radius: 8).opacity(0.35)
+                Image(systemName: "bubble.left.and.bubble.right.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .background(accentGrad, in: Circle())
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Команда Nexus рядом")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(fg)
+                Text(summaryText)
+                    .font(.system(size: 12))
+                    .foregroundStyle(fg.opacity(0.45))
+                    .lineLimit(2)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+        .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(stroke, lineWidth: 0.5))
+    }
+
+    private var summaryText: String {
+        if tickets.isEmpty { return "Опиши проблему или идею — ответим в течение 24 ч." }
+        if openCount > 0 {
+            return "Открытых обращений: \(openCount). Мы уже их разбираем."
+        }
+        if answeredCount > 0 {
+            return "Всего обращений: \(tickets.count). Все получили ответ."
+        }
+        return "Всего обращений: \(tickets.count)."
+    }
+
+    // MARK: - New ticket card
+
+    private var newTicketCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Новое обращение")
+                .font(.system(size: 11, weight: .semibold))
+                .kerning(0.5)
+                .foregroundStyle(fg.opacity(0.45))
+                .textCase(.uppercase)
+
             ZStack(alignment: .topLeading) {
                 if newMessage.isEmpty {
-                    Text("Опишите проблему или предложение...")
+                    Text("Опиши проблему или предложение…")
                         .font(.system(size: 14))
-                        .foregroundStyle(.white.opacity(0.3))
+                        .foregroundStyle(fg.opacity(0.3))
                         .padding(.horizontal, 14)
                         .padding(.top, 14)
                         .allowsHitTesting(false)
                 }
                 TextEditor(text: $newMessage)
                     .font(.system(size: 14))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(fg)
                     .scrollContentBackground(.hidden)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 10)
-                    .frame(minHeight: 100, maxHeight: 150)
+                    .frame(minHeight: 110, maxHeight: 160)
             }
-            .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(.white.opacity(0.1), lineWidth: 0.5))
+            .background(fg.opacity(0.04), in: RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(stroke, lineWidth: 0.5))
 
             if let err = sendError {
-                Text(err).font(.system(size: 12)).foregroundStyle(.red.opacity(0.8))
+                Label(err, systemImage: "exclamationmark.triangle.fill")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.red.opacity(0.85))
+                    .transition(.opacity)
             }
             if sendSuccess {
-                HStack(spacing: 6) {
-                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-                    Text("Обращение отправлено! Мы ответим в ближайшее время.")
-                        .font(.system(size: 13)).foregroundStyle(.white.opacity(0.6))
-                }
-                .transition(.opacity)
+                Label("Обращение отправлено! Мы ответим в ближайшее время.",
+                      systemImage: "checkmark.seal.fill")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.green)
+                    .transition(.opacity)
             }
 
             Button {
@@ -123,39 +182,78 @@ struct FeedbackView: View {
                     if isSending {
                         ProgressView().tint(.white)
                     } else {
-                        Text("Отправить обращение")
-                            .font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
+                        HStack(spacing: 6) {
+                            Image(systemName: "paperplane.fill")
+                                .font(.system(size: 13, weight: .semibold))
+                            Text("Отправить обращение")
+                                .font(.system(size: 15, weight: .semibold))
+                        }
+                        .foregroundStyle(.white)
                     }
                 }
                 .frame(maxWidth: .infinity).padding(.vertical, 13)
-                .background(
-                    LinearGradient(colors: [Color(red: 0.3, green: 0.5, blue: 1.0), Color(red: 0.5, green: 0.2, blue: 0.9)],
-                                   startPoint: .leading, endPoint: .trailing),
-                    in: Capsule()
-                )
+                .background(accentGrad, in: Capsule())
             }
             .buttonStyle(.plain)
             .disabled(isSending || newMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            .opacity(newMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.5 : 1)
+            .opacity(newMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.45 : 1)
+        }
+        .padding(14)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+        .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(stroke, lineWidth: 0.5))
+        .transition(.asymmetric(
+            insertion: .opacity.combined(with: .move(edge: .top)),
+            removal: .opacity
+        ))
+    }
+
+    // MARK: - Tickets list
+
+    @ViewBuilder
+    private var ticketsList: some View {
+        if isLoading {
+            HStack { Spacer(); ProgressView().tint(fg.opacity(0.4)); Spacer() }
+                .frame(height: 160)
+        } else if tickets.isEmpty {
+            emptyState
+        } else {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Мои обращения")
+                    .font(.system(size: 11, weight: .semibold))
+                    .kerning(0.5)
+                    .foregroundStyle(fg.opacity(0.45))
+                    .textCase(.uppercase)
+                    .padding(.leading, 4)
+                LazyVStack(spacing: 10) {
+                    ForEach(tickets) { ticket in
+                        TicketCard(ticket: ticket, fg: fg, stroke: stroke, accent: accent1)
+                    }
+                }
+            }
         }
     }
 
-    // MARK: - Empty State
-
-    var emptyState: some View {
-        VStack(spacing: 16) {
-            Spacer()
-            Image(systemName: "bubble.left.and.bubble.right")
-                .font(.system(size: 44))
-                .foregroundStyle(.white.opacity(0.15))
+    private var emptyState: some View {
+        VStack(spacing: 14) {
+            ZStack {
+                Circle().fill(accentGrad.opacity(0.18)).frame(width: 88, height: 88)
+                Image(systemName: "bubble.left.and.bubble.right")
+                    .font(.system(size: 34, weight: .light))
+                    .foregroundStyle(accent1)
+            }
             Text("Нет обращений")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.4))
-            Text("Нажми + чтобы написать нам")
-                .font(.system(size: 14))
-                .foregroundStyle(.white.opacity(0.25))
-            Spacer()
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(fg.opacity(0.75))
+            Text("Нажми «+» в верхнем углу, чтобы написать нам")
+                .font(.system(size: 13))
+                .foregroundStyle(fg.opacity(0.4))
+                .multilineTextAlignment(.center)
         }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 40)
+        .padding(.horizontal, 20)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+        .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(stroke, lineWidth: 0.5))
     }
 
     // MARK: - Actions
@@ -180,15 +278,21 @@ struct FeedbackView: View {
         do {
             try await FeedbackRepository.shared.submit(ticket: ticket)
             await sendEmailNotification(ticket: ticket)
-            tickets.insert(ticket, at: 0)
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                tickets.insert(ticket, at: 0)
+            }
             newMessage = ""
-            sendSuccess = true
+            withAnimation { sendSuccess = true }
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
             DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                sendSuccess = false
-                showNewTicket = false
+                withAnimation {
+                    sendSuccess = false
+                    showNewTicket = false
+                }
             }
         } catch {
             sendError = error.localizedDescription
+            UINotificationFeedbackGenerator().notificationOccurred(.error)
         }
     }
 
@@ -216,6 +320,9 @@ struct FeedbackView: View {
 
 private struct TicketCard: View {
     let ticket: FeedbackTicket
+    let fg: Color
+    let stroke: Color
+    let accent: Color
 
     var statusColor: Color {
         switch ticket.status {
@@ -225,65 +332,79 @@ private struct TicketCard: View {
         }
     }
 
+    var statusIcon: String {
+        switch ticket.status {
+        case .open:     return "clock.fill"
+        case .answered: return "checkmark.seal.fill"
+        case .closed:   return "lock.fill"
+        }
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             // Header row
             HStack(spacing: 8) {
                 Text("#\(String(ticket.id.prefix(6)).uppercased())")
                     .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.35))
+                    .foregroundStyle(fg.opacity(0.35))
                 Spacer()
-                Text(ticket.status.displayName)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(statusColor)
-                    .padding(.horizontal, 8).padding(.vertical, 3)
-                    .background(statusColor.opacity(0.15), in: Capsule())
+                HStack(spacing: 4) {
+                    Image(systemName: statusIcon).font(.system(size: 9, weight: .semibold))
+                    Text(ticket.status.displayName)
+                        .font(.system(size: 11, weight: .semibold))
+                }
+                .foregroundStyle(statusColor)
+                .padding(.horizontal, 8).padding(.vertical, 4)
+                .background(statusColor.opacity(0.14), in: Capsule())
+                .overlay(Capsule().strokeBorder(statusColor.opacity(0.3), lineWidth: 0.5))
+
                 Text(ticket.createdAt.formatted(date: .abbreviated, time: .omitted))
                     .font(.system(size: 11))
-                    .foregroundStyle(.white.opacity(0.25))
+                    .foregroundStyle(fg.opacity(0.35))
             }
 
             // User message
             VStack(alignment: .leading, spacing: 4) {
-                Text("Ваше обращение")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.3))
+                Text("Твоё обращение")
+                    .font(.system(size: 10, weight: .medium))
+                    .kerning(0.3)
+                    .textCase(.uppercase)
+                    .foregroundStyle(fg.opacity(0.35))
                 Text(ticket.message)
                     .font(.system(size: 14))
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(fg.opacity(0.85))
                     .fixedSize(horizontal: false, vertical: true)
             }
 
             // Admin reply
             if let reply = ticket.adminReply, !reply.isEmpty {
-                Divider().background(.white.opacity(0.07))
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 4) {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 5) {
                         Image(systemName: "person.badge.shield.checkmark.fill")
                             .font(.system(size: 11))
-                            .foregroundStyle(Color(red: 0.4, green: 0.6, blue: 1.0))
+                            .foregroundStyle(accent)
                         Text("Ответ команды Nexus")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(Color(red: 0.4, green: 0.6, blue: 1.0))
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(accent)
                         if let at = ticket.repliedAt {
                             Spacer()
                             Text(at.formatted(date: .abbreviated, time: .omitted))
                                 .font(.system(size: 11))
-                                .foregroundStyle(.white.opacity(0.25))
+                                .foregroundStyle(fg.opacity(0.35))
                         }
                     }
                     Text(reply)
                         .font(.system(size: 14))
-                        .foregroundStyle(.white.opacity(0.7))
+                        .foregroundStyle(fg.opacity(0.8))
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                .padding(10)
-                .background(Color(red: 0.3, green: 0.5, blue: 1.0).opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
-                .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color(red: 0.3, green: 0.5, blue: 1.0).opacity(0.2), lineWidth: 0.5))
+                .padding(12)
+                .background(accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(accent.opacity(0.22), lineWidth: 0.5))
             }
         }
         .padding(14)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(.white.opacity(0.07), lineWidth: 0.5))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
+        .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(stroke, lineWidth: 0.5))
     }
 }
