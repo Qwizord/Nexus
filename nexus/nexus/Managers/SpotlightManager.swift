@@ -11,7 +11,7 @@ import UniformTypeIdentifiers
 // При включении тоггла в Settings — индексируем; при выключении — удаляем.
 
 @MainActor
-final class SpotlightManager: ObservableObject {
+final class SpotlightManager {
     static let shared = SpotlightManager()
 
     /// Идентификатор домена (uniqueIdentifier берётся как "nexus.<slug>").
