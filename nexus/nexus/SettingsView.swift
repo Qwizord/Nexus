@@ -2,6 +2,7 @@ import SwiftUI
 import PhotosUI
 import UIKit
 import LocalAuthentication
+import UserNotifications
 #if canImport(FirebaseAuth)
 import FirebaseAuth
 #endif
@@ -578,6 +579,8 @@ struct SettingsView: View {
             computeCacheSize()
             configureNavBarAppearance()
             loadIntegrationStates()
+            syncNotificationAuthorization()
+            syncSpotlightState()
         }
     }
 
@@ -1074,11 +1077,17 @@ struct SettingsView: View {
             // Notifications
             toggleRow(icon: "bell.fill", bg: Color(red:0.35,green:0.35,blue:0.4),
                       label: "Уведомления", isOn: $notifOn)
+                .onChange(of: notifOn) { _, enabled in
+                    handleNotificationsToggle(enabled)
+                }
             NXDivider()
 
             // Spotlight
             toggleRow(icon: "magnifyingglass", bg: Color(red:0.35,green:0.35,blue:0.4),
                       label: "Spotlight", isOn: $spotlightOn)
+                .onChange(of: spotlightOn) { _, enabled in
+                    handleSpotlightToggle(enabled)
+                }
         }
     }
 
@@ -1566,6 +1575,80 @@ struct SettingsView: View {
                     appState.settings.faceIDEnabled = false
                 }
             }
+        }
+    }
+
+    // MARK: - Notifications & Spotlight
+
+    /// При изменении тоггла «Уведомления»:
+    ///  • ON  → запрашиваем разрешение; если уже denied — отправляем в Settings.app
+    ///          (тут просто сбрасываем тоггл, чтобы пользователь увидел, что системное разрешение
+    ///          нужно дать вручную).
+    ///  • OFF → снимаем все запланированные локальные уведомления.
+    private func handleNotificationsToggle(_ enabled: Bool) {
+        if enabled {
+            Task { @MainActor in
+                let center = UNUserNotificationCenter.current()
+                let settings = await center.notificationSettings()
+                switch settings.authorizationStatus {
+                case .notDetermined:
+                    let granted = await NotificationManager.shared.requestPermission()
+                    if granted {
+                        NotificationManager.shared.enableAllScheduled()
+                        UINotificationFeedbackGenerator().notificationOccurred(.success)
+                    } else {
+                        notifOn = false
+                        authErrorMessage = "Разрешение на уведомления не выдано. Включи его в Настройках iOS."
+                        showAuthError = true
+                    }
+                case .authorized, .provisional, .ephemeral:
+                    NotificationManager.shared.enableAllScheduled()
+                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                case .denied:
+                    notifOn = false
+                    authErrorMessage = "Уведомления отключены в системных Настройках. Открой Настройки → Nexus → Уведомления."
+                    showAuthError = true
+                @unknown default:
+                    notifOn = false
+                }
+            }
+        } else {
+            NotificationManager.shared.disableAll()
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        }
+    }
+
+    /// При изменении Spotlight — индексируем/чистим основные экраны приложения.
+    private func handleSpotlightToggle(_ enabled: Bool) {
+        if enabled {
+            SpotlightManager.shared.indexAppShortcuts()
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        } else {
+            SpotlightManager.shared.removeAllShortcuts()
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        }
+    }
+
+    /// При появлении экрана — синхронизируем UI со статусом системы:
+    /// если пользователь отключил уведомления в iOS Settings, toggle должен это отразить.
+    private func syncNotificationAuthorization() {
+        Task { @MainActor in
+            let settings = await UNUserNotificationCenter.current().notificationSettings()
+            let systemAllowed = settings.authorizationStatus == .authorized ||
+                                settings.authorizationStatus == .provisional ||
+                                settings.authorizationStatus == .ephemeral
+            // Если система отказала, принудительно гасим локальный тоггл.
+            if !systemAllowed && notifOn {
+                notifOn = false
+            }
+        }
+    }
+
+    /// Если Spotlight включён в настройках — переиндексируем при открытии Settings,
+    /// на случай если контент/тексты разделов изменились.
+    private func syncSpotlightState() {
+        if spotlightOn {
+            SpotlightManager.shared.indexAppShortcuts()
         }
     }
 
