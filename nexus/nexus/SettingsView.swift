@@ -295,6 +295,12 @@ struct SettingsView: View {
     // Integrations carousel custom scroll
     @State private var carouselOffset: CGFloat = 0
     @State private var carouselDragStart: CGFloat = 0
+    /// Открытая карточка интеграции — детальный sheet.
+    @State private var selectedIntegration: IntegrationItem? = nil
+    /// Runtime-состояние подключений (переопределяет `connected` из allIntegrations).
+    /// Ключ — `name` интеграции.
+    @AppStorage("nx.settings.integrationStates") private var integrationStatesJSON = "{}"
+    @State private var integrationStates: [String: Bool] = [:]
     /// Шейдер цилиндра включается только после того, как splash/FaceID отработали,
     /// иначе Metal-пайплайн конкурирует за GPU со startup-анимациями и всё лагает.
     @State private var cacheItems: [CacheItem] = []
@@ -351,27 +357,51 @@ struct SettingsView: View {
     }
 
     // MARK: Data
-    struct IntegrationItem: Hashable {
+    struct IntegrationItem: Hashable, Identifiable {
+        var id: String { name }
+        /// SF Symbol — fallback когда нет брендового ассета.
         let icon: String
+        /// Имя бренд-ассета в Assets.xcassets (PNG/PDF/SVG).
+        /// Если ассет найден — он показывается вместо `icon`.
+        /// Шаблон имени: `brand.<name>` (lower-cased, без пробелов).
+        let asset: String?
+        /// Рендерить бренд-ассет в original-цвете (true) или как template
+        /// с белой заливкой (false). Для монохромных лого ставь `false`.
+        let assetColorful: Bool
         let bg: Color
         let name: String
         let connected: Bool
+        init(icon: String, asset: String? = nil, assetColorful: Bool = false,
+             bg: Color, name: String, connected: Bool) {
+            self.icon = icon
+            self.asset = asset
+            self.assetColorful = assetColorful
+            self.bg = bg
+            self.name = name
+            self.connected = connected
+        }
         func hash(into hasher: inout Hasher) { hasher.combine(name) }
         static func == (l: Self, r: Self) -> Bool { l.name == r.name }
     }
+    // NB: Чтобы подключить брендовую иконку — добавь PNG/PDF в
+    // Assets.xcassets с именем, равным `asset:` ниже (например `brand.oura`).
+    // Ассет должен быть шаблонным (template) для монохромных лого —
+    // assetColorful: false; для цветных логотипов — assetColorful: true.
     private let allIntegrations: [IntegrationItem] = [
-        .init(icon: "heart.fill",             bg: Color(red:0.9,green:0.1,blue:0.2),  name: "Health",         connected: true ),
-        .init(icon: "calendar",               bg: Color(red:0.6,green:0.0,blue:0.0),  name: "Calendar",       connected: true ),
-        .init(icon: "icloud.fill",            bg: Color(red:0.0,green:0.35,blue:0.9), name: "iCloud",         connected: false),
-        .init(icon: "applewatch",             bg: Color(red:0.3,green:0.3,blue:0.35), name: "Apple Watch",    connected: false),
-        .init(icon: "circle.hexagongrid.fill",bg: Color(red:0.45,green:0.3,blue:0.9),name: "Oura Ring",      connected: false),
-        .init(icon: "waveform.path.ecg",      bg: Color(red:0.0,green:0.6,blue:0.3),  name: "Garmin",         connected: false),
-        .init(icon: "bolt.heart.fill",        bg: Color(red:0.85,green:0.1,blue:0.1), name: "Whoop",          connected: false),
-        .init(icon: "figure.run",             bg: Color(red:0.0,green:0.5,blue:1.0),  name: "Fitbit",         connected: false),
-        .init(icon: "target",                 bg: Color(red:0.7,green:0.0,blue:0.0),  name: "Polar",          connected: false),
-        .init(icon: "scalemass.fill",         bg: Color(red:0.3,green:0.5,blue:0.9),  name: "Withings",       connected: false),
-        .init(icon: "drop.fill",              bg: Color(red:0.0,green:0.5,blue:0.8),  name: "Dexcom",         connected: false),
-        .init(icon: "s.circle.fill",          bg: Color(red:0.0,green:0.6,blue:0.3),  name: "Samsung",        connected: false),
+        // Apple native — SF Symbols уже выглядят «брендово»
+        .init(icon: "heart.fill",             asset: "brand.health",      assetColorful: false, bg: Color(red:0.9,green:0.1,blue:0.2),  name: "Health",         connected: true ),
+        .init(icon: "calendar",               asset: "brand.calendar",    assetColorful: false, bg: Color(red:0.6,green:0.0,blue:0.0),  name: "Calendar",       connected: true ),
+        .init(icon: "icloud.fill",            asset: "brand.icloud",      assetColorful: false, bg: Color(red:0.0,green:0.35,blue:0.9), name: "iCloud",         connected: false),
+        .init(icon: "applewatch",             asset: "brand.applewatch",  assetColorful: false, bg: Color(red:0.3,green:0.3,blue:0.35), name: "Apple Watch",    connected: false),
+        // Third-party — кидай PDF/PNG в Assets.xcassets с этими именами
+        .init(icon: "circle.hexagongrid.fill",asset: "brand.oura",        assetColorful: false, bg: Color(red:0.45,green:0.3,blue:0.9), name: "Oura Ring",      connected: false),
+        .init(icon: "waveform.path.ecg",      asset: "brand.garmin",      assetColorful: false, bg: Color(red:0.0,green:0.6,blue:0.3),  name: "Garmin",         connected: false),
+        .init(icon: "bolt.heart.fill",        asset: "brand.whoop",       assetColorful: false, bg: Color(red:0.85,green:0.1,blue:0.1), name: "Whoop",          connected: false),
+        .init(icon: "figure.run",             asset: "brand.fitbit",      assetColorful: false, bg: Color(red:0.0,green:0.5,blue:1.0),  name: "Fitbit",         connected: false),
+        .init(icon: "target",                 asset: "brand.polar",       assetColorful: false, bg: Color(red:0.7,green:0.0,blue:0.0),  name: "Polar",          connected: false),
+        .init(icon: "scalemass.fill",         asset: "brand.withings",    assetColorful: false, bg: Color(red:0.3,green:0.5,blue:0.9),  name: "Withings",       connected: false),
+        .init(icon: "drop.fill",              asset: "brand.dexcom",      assetColorful: false, bg: Color(red:0.0,green:0.5,blue:0.8),  name: "Dexcom",         connected: false),
+        .init(icon: "s.circle.fill",          asset: "brand.samsung",     assetColorful: false, bg: Color(red:0.0,green:0.6,blue:0.3),  name: "Samsung",        connected: false),
     ]
 
     // MARK: - Body
@@ -473,6 +503,15 @@ struct SettingsView: View {
                 .presentationDragIndicator(.hidden)
         }
         .sheet(isPresented: $showShareSheet) { ShareSheet(activityItems: ["Я использую Nexus!"]) }
+        .sheet(item: $selectedIntegration) { item in
+            IntegrationDetailSheet(
+                integration: item,
+                connected: isConnected(item),
+                onToggle: { toggleConnection(for: item) }
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
         .alert("Выйти из аккаунта?", isPresented: $showSignOutAlert) {
             Button("Выйти", role: .destructive) { appState.signOut() }
             Button("Отмена", role: .cancel) {}
@@ -484,6 +523,7 @@ struct SettingsView: View {
             selectedTheme = appState.settings.theme
             computeCacheSize()
             configureNavBarAppearance()
+            loadIntegrationStates()
         }
     }
 
@@ -595,7 +635,19 @@ struct SettingsView: View {
 
                     HStack(spacing: spacing) {
                         ForEach(allIntegrations, id: \.name) { item in
-                            IntegrationCard(icon: item.icon, bg: item.bg, name: item.name, connected: item.connected)
+                            IntegrationCard(
+                                icon: item.icon,
+                                asset: item.asset,
+                                assetColorful: item.assetColorful,
+                                bg: item.bg,
+                                name: item.name,
+                                connected: isConnected(item)
+                            )
+                            .onTapGesture {
+                                let hap = UIImpactFeedbackGenerator(style: .light)
+                                hap.impactOccurred()
+                                selectedIntegration = item
+                            }
                         }
                     }
                     .padding(.horizontal, DS.hPad)
@@ -1321,6 +1373,36 @@ struct SettingsView: View {
         return items.sorted { $0.size > $1.size }
     }
 
+    // MARK: - Integration State
+
+    /// Возвращает актуальное состояние подключения. Если пользователь переключал
+    /// — берём из runtime `integrationStates`, иначе — дефолт из `allIntegrations`.
+    private func isConnected(_ item: IntegrationItem) -> Bool {
+        integrationStates[item.name] ?? item.connected
+    }
+
+    private func toggleConnection(for item: IntegrationItem) {
+        let newValue = !isConnected(item)
+        integrationStates[item.name] = newValue
+        saveIntegrationStates()
+        let hap = UINotificationFeedbackGenerator()
+        hap.notificationOccurred(newValue ? .success : .warning)
+    }
+
+    private func loadIntegrationStates() {
+        guard let data = integrationStatesJSON.data(using: .utf8),
+              let dict = try? JSONDecoder().decode([String: Bool].self, from: data)
+        else { return }
+        integrationStates = dict
+    }
+
+    private func saveIntegrationStates() {
+        if let data = try? JSONEncoder().encode(integrationStates),
+           let str = String(data: data, encoding: .utf8) {
+            integrationStatesJSON = str
+        }
+    }
+
     private func performClearCache() {
         let fm = FileManager.default
         if let url = fm.urls(for: .cachesDirectory, in: .userDomainMask).first,
@@ -1336,10 +1418,19 @@ struct SettingsView: View {
 
 private struct IntegrationCard: View {
     let icon: String
+    var asset: String? = nil
+    var assetColorful: Bool = false
     let bg: Color
     let name: String
     let connected: Bool
     @Environment(\.colorScheme) private var cs
+
+    /// Проверяем наличие бренд-ассета: если PDF/PNG с таким именем есть
+    /// в Assets.xcassets — используем его, иначе SF Symbol.
+    private var hasBrandAsset: Bool {
+        guard let a = asset, !a.isEmpty else { return false }
+        return UIImage(named: a) != nil
+    }
 
     var body: some View {
         VStack(spacing: 10) {
@@ -1348,9 +1439,8 @@ private struct IntegrationCard: View {
                     .fill(bg)
                     .frame(width: 52, height: 52)
                     .shadow(color: bg.opacity(0.35), radius: 4, y: 2)
-                Image(systemName: icon)
-                    .font(.system(size: 22, weight: .medium))
-                    .foregroundStyle(.white)
+
+                iconView
 
                 if connected {
                     Circle()
@@ -1369,6 +1459,30 @@ private struct IntegrationCard: View {
         }
         .frame(width: 80, height: 100)
         .glassCard(radius: 18)
+    }
+
+    @ViewBuilder
+    private var iconView: some View {
+        if hasBrandAsset, let asset {
+            if assetColorful {
+                Image(asset)
+                    .resizable()
+                    .renderingMode(.original)
+                    .scaledToFit()
+                    .frame(width: 30, height: 30)
+            } else {
+                Image(asset)
+                    .resizable()
+                    .renderingMode(.template)
+                    .scaledToFit()
+                    .frame(width: 28, height: 28)
+                    .foregroundStyle(.white)
+            }
+        } else {
+            Image(systemName: icon)
+                .font(.system(size: 22, weight: .medium))
+                .foregroundStyle(.white)
+        }
     }
 }
 
@@ -1467,6 +1581,227 @@ struct PrivacySheet: View {
 
     ✉️ Вопросы, NDA, GDPR-запросы — qwizord@icloud.com
     """
+}
+
+// MARK: - Integration Detail Sheet
+
+struct IntegrationDetailSheet: View {
+    let integration: SettingsView.IntegrationItem
+    let connected: Bool
+    let onToggle: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var cs
+    @State private var closePressed = false
+    @State private var actionPressed = false
+    @State private var confirmDisconnect = false
+
+    private var fg: Color { cs == .dark ? .white : Color(red:0.11,green:0.11,blue:0.14) }
+
+    /// Описание и список синхронизируемых данных по каждой интеграции.
+    private static let meta: [String: (desc: String, points: [String])] = [
+        "Health": ("Синхронизация со встроенным приложением Apple Health. Читает метрики локально — ни один байт не уходит на сторонние серверы.",
+                   ["Шаги и активность", "Пульс и HRV", "Сон и восстановление", "Вес и состав тела"]),
+        "Calendar": ("Показывает встречи в ежедневной ленте и напоминает о важных событиях.",
+                     ["События календаря", "Напоминания", "Приглашения"]),
+        "iCloud": ("Синхронизация данных Nexus между устройствами через твой iCloud.",
+                   ["Бэкап настроек", "Общие заметки", "Синхронизация прогресса"]),
+        "Apple Watch": ("Отправляет уведомления, треккинг активности и hands-free управление ИИ-агентом.",
+                        ["Real-time пульс", "Треккинг тренировок", "Уведомления", "Siri-команды"]),
+        "Oura Ring": ("Импортирует данные о сне, восстановлении и готовности.",
+                      ["Sleep score", "Readiness score", "Температура тела", "HRV"]),
+        "Garmin": ("Данные с Garmin Connect: тренировки, GPS-треки, продвинутая аналитика.",
+                   ["Workouts", "VO2 Max", "Training load", "GPS-треки"]),
+        "Whoop": ("Recovery, strain и sleep-аналитика от Whoop.",
+                  ["Recovery", "Strain", "Sleep performance", "HRV"]),
+        "Fitbit": ("Активность, сон и ЧСС с устройств Fitbit.",
+                   ["Шаги и калории", "Sleep stages", "Resting HR", "SpO2"]),
+        "Polar": ("Тренировки, пульс и Training Load из Polar Flow.",
+                  ["Workouts", "HR zones", "Recovery Pro", "Training Load"]),
+        "Withings": ("Smart-весы и устройства здоровья Withings.",
+                     ["Вес и жир", "Артериальное давление", "ECG", "Температура"]),
+        "Dexcom": ("Непрерывный мониторинг глюкозы.",
+                   ["CGM real-time", "Тренды глюкозы", "Алерты", "History"]),
+        "Samsung": ("Здоровье и активность из Samsung Health.",
+                    ["Steps & Activity", "Heart Rate", "Sleep", "Stress"])
+    ]
+
+    private var meta: (desc: String, points: [String]) {
+        Self.meta[integration.name] ?? ("Подключите интеграцию для синхронизации данных.", [])
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 24) {
+                    // Большая иконка
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 26, style: .continuous)
+                            .fill(integration.bg)
+                            .frame(width: 96, height: 96)
+                            .shadow(color: integration.bg.opacity(0.5), radius: 16, y: 6)
+                        bigIconView
+                    }
+                    .padding(.top, 8)
+
+                    VStack(spacing: 6) {
+                        Text(integration.name)
+                            .font(.system(size: 26, weight: .bold, design: .rounded))
+                            .foregroundStyle(fg)
+
+                        statusPill
+                    }
+
+                    // Описание
+                    Text(meta.desc)
+                        .font(.system(size: 15))
+                        .foregroundStyle(fg.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 28)
+
+                    // Список синхронизируемых данных
+                    if !meta.points.isEmpty {
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text("СИНХРОНИЗИРУЕТСЯ")
+                                .font(.system(size: 11, weight: .semibold))
+                                .kerning(0.5)
+                                .foregroundStyle(fg.opacity(0.4))
+                                .padding(.leading, 20)
+                                .padding(.bottom, 8)
+
+                            VStack(spacing: 0) {
+                                ForEach(Array(meta.points.enumerated()), id: \.offset) { idx, point in
+                                    HStack(spacing: 12) {
+                                        Image(systemName: connected ? "checkmark.circle.fill" : "circle")
+                                            .font(.system(size: 16))
+                                            .foregroundStyle(connected ? Color.green : fg.opacity(0.3))
+                                        Text(point)
+                                            .font(.system(size: 15))
+                                            .foregroundStyle(fg)
+                                        Spacer()
+                                    }
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 12)
+                                    if idx < meta.points.count - 1 {
+                                        Divider().background(.white.opacity(0.06)).padding(.leading, 16)
+                                    }
+                                }
+                            }
+                            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+                            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(fg.opacity(0.08), lineWidth: 0.5))
+                        }
+                        .padding(.horizontal, 16)
+                    }
+
+                    // Кнопка Connect / Disconnect
+                    actionButton
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+
+                    Spacer(minLength: 40)
+                }
+                .padding(.top, 12)
+            }
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(fg)
+                        .scaleEffect(closePressed ? 0.88 : 1.0)
+                        .animation(.easeInOut(duration: 0.18), value: closePressed)
+                        .contentShape(Rectangle())
+                        .highPriorityGesture(
+                            DragGesture(minimumDistance: 0)
+                                .onChanged { _ in closePressed = true }
+                                .onEnded { g in
+                                    closePressed = false
+                                    if abs(g.translation.width) < 18 && abs(g.translation.height) < 18 {
+                                        dismiss()
+                                    }
+                                }
+                        )
+                }
+            }
+            .alert("Отключить \(integration.name)?", isPresented: $confirmDisconnect) {
+                Button("Отключить", role: .destructive) {
+                    onToggle()
+                    dismiss()
+                }
+                Button("Отмена", role: .cancel) {}
+            } message: {
+                Text("Nexus перестанет синхронизировать данные с \(integration.name). Ты сможешь подключить их заново в любое время.")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var bigIconView: some View {
+        if let asset = integration.asset, UIImage(named: asset) != nil {
+            if integration.assetColorful {
+                Image(asset).resizable().renderingMode(.original).scaledToFit().frame(width: 56, height: 56)
+            } else {
+                Image(asset).resizable().renderingMode(.template).scaledToFit().frame(width: 52, height: 52).foregroundStyle(.white)
+            }
+        } else {
+            Image(systemName: integration.icon)
+                .font(.system(size: 42, weight: .medium))
+                .foregroundStyle(.white)
+        }
+    }
+
+    private var statusPill: some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(connected ? Color.green : fg.opacity(0.35))
+                .frame(width: 8, height: 8)
+            Text(connected ? "Подключено" : "Не подключено")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(connected ? .green : fg.opacity(0.5))
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 5)
+        .background(
+            Capsule().fill((connected ? Color.green : fg).opacity(0.10))
+        )
+    }
+
+    private var actionButton: some View {
+        Button {
+            if connected {
+                confirmDisconnect = true
+            } else {
+                onToggle()
+                dismiss()
+            }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: connected ? "minus.circle.fill" : "plus.circle.fill")
+                    .font(.system(size: 16, weight: .semibold))
+                Text(connected ? "Отключить" : "Подключить")
+                    .font(.system(size: 16, weight: .semibold))
+            }
+            .foregroundStyle(connected ? Color.red : .white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(connected ? Color.red.opacity(0.10) : integration.bg)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(connected ? Color.red.opacity(0.25) : .clear, lineWidth: 1)
+            )
+            .scaleEffect(actionPressed ? 0.97 : 1.0)
+        }
+        .buttonStyle(.plain)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in withAnimation(.easeInOut(duration: 0.1)) { actionPressed = true } }
+                .onEnded { _ in withAnimation(.easeInOut(duration: 0.15)) { actionPressed = false } }
+        )
+    }
 }
 
 // MARK: - Stats Detail View
