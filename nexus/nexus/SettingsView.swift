@@ -268,6 +268,7 @@ struct NXGradientIconBox: View {
 
 struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
+    @ObservedObject private var authManager = AuthenticationManager.shared
     @Environment(\.colorScheme) private var cs
 
     // Integration toggles
@@ -312,6 +313,11 @@ struct SettingsView: View {
     @State private var showChangeEmail    = false
     @State private var showChangePassword = false
     @State private var showLinkPhone      = false
+    /// Открытая карточка auth-метода в секции Account — показывает
+    /// bottom-sheet с опциями connect/disconnect/change.
+    @State private var selectedAuthMethod: AuthMethodKind? = nil
+    @State private var authErrorMessage: String? = nil
+    @State private var showAuthError = false
 
     // Overlays / Sheets
     @State private var showProfileEdit    = false
@@ -331,6 +337,29 @@ struct SettingsView: View {
             case .faq:       return "FAQ"
             case .changelog: return "Журнал изменений"
             case .terms:     return "Условия использования"
+            }
+        }
+    }
+
+    enum AuthMethodKind: String, Identifiable, Hashable {
+        case apple, google, email, password, phone
+        var id: String { rawValue }
+        var providerID: String {
+            switch self {
+            case .apple:    return "apple.com"
+            case .google:   return "google.com"
+            case .email:    return "password"
+            case .password: return "password"
+            case .phone:    return "phone"
+            }
+        }
+        var title: String {
+            switch self {
+            case .apple:    return "Apple ID"
+            case .google:   return "Google"
+            case .email:    return "Email"
+            case .password: return "Пароль"
+            case .phone:    return "Телефон"
             }
         }
     }
@@ -512,6 +541,21 @@ struct SettingsView: View {
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
         }
+        .sheet(item: $selectedAuthMethod) { kind in
+            AuthMethodSheet(
+                kind: kind,
+                status: authStatus(for: kind),
+                subtitle: authSubtitle(for: kind),
+                onConnect: { handleConnect(kind: kind) },
+                onChange:  { handleChange(kind: kind) },
+                onDisconnect: { handleDisconnect(kind: kind) }
+            )
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.visible)
+        }
+        .alert("Ошибка", isPresented: $showAuthError, actions: {
+            Button("OK", role: .cancel) {}
+        }, message: { Text(authErrorMessage ?? "") })
         .alert("Выйти из аккаунта?", isPresented: $showSignOutAlert) {
             Button("Выйти", role: .destructive) { appState.signOut() }
             Button("Отмена", role: .cancel) {}
@@ -905,98 +949,120 @@ struct SettingsView: View {
             NXDivider()
 
             // Apple ID
-            accountMethodRow(icon: "apple.logo",
+            accountMethodRow(kind: .apple,
+                icon: "apple.logo",
                 iconBg: cs == .dark ? Color(red:0.2,green:0.2,blue:0.22) : Color(red:0.85,green:0.85,blue:0.87),
-                iconColor: cs == .dark ? .white : .black,
-                title: "Apple ID", status: .notConnected,
-                onConnect: {}, onChange: {}, onRemove: {})
+                iconColor: cs == .dark ? .white : .black)
             NXDivider()
 
             // Google
-            accountMethodRow(icon: "Google-icon",
+            accountMethodRow(kind: .google,
+                icon: "Google-icon",
                 iconBg: .white, iconColor: .white,
-                title: "Google", status: .connected,
-                isAsset: true,
-                onConnect: {}, onChange: {}, onRemove: {})
+                isAsset: true)
             NXDivider()
 
             // Email
-            accountMethodRow(icon: "envelope.fill",
-                iconBg: Color(red:0.0,green:0.35,blue:0.9), iconColor: .white,
-                title: "Email", status: .notConnected,
-                onConnect: { showChangeEmail = true },
-                onChange: { showChangeEmail = true },
-                onRemove: {})
+            accountMethodRow(kind: .email,
+                icon: "envelope.fill",
+                iconBg: Color(red:0.0,green:0.35,blue:0.9), iconColor: .white)
             NXDivider()
 
             // Password
-            accountMethodRow(icon: "lock.fill",
-                iconBg: Color(red:0.4,green:0.4,blue:0.45), iconColor: .white,
-                title: "Пароль", status: .notConnected,
-                onConnect: { showChangePassword = true },
-                onChange: { showChangePassword = true },
-                onRemove: {})
+            accountMethodRow(kind: .password,
+                icon: "lock.fill",
+                iconBg: Color(red:0.4,green:0.4,blue:0.45), iconColor: .white)
             NXDivider()
 
             // Phone
-            accountMethodRow(icon: "phone.fill",
-                iconBg: Color(red:0.1,green:0.7,blue:0.3), iconColor: .white,
-                title: "Телефон", status: .notConnected,
-                onConnect: { showLinkPhone = true },
-                onChange: { showLinkPhone = true },
-                onRemove: {})
+            accountMethodRow(kind: .phone,
+                icon: "phone.fill",
+                iconBg: Color(red:0.1,green:0.7,blue:0.3), iconColor: .white)
+        }
+    }
+
+    /// Возвращает актуальный статус для auth-метода, запрашивая AuthenticationManager.
+    private func authStatus(for kind: AuthMethodKind) -> AccountLinkStatus {
+        switch kind {
+        case .apple:    return authManager.hasAppleProvider  ? .connected : .notConnected
+        case .google:   return authManager.hasGoogleProvider ? .connected : .notConnected
+        case .email, .password:
+            return authManager.hasEmailProvider ? .connected : .notConnected
+        case .phone:    return authManager.hasPhoneProvider  ? .connected : .notConnected
+        }
+    }
+
+    /// Текст-значение под названием: email для .email, номер телефона для .phone, etc.
+    private func authSubtitle(for kind: AuthMethodKind) -> String? {
+        switch kind {
+        case .email:
+            return authManager.linkedEmailAddress
+        case .phone:
+            return authManager.linkedPhoneNumber
+        case .apple, .google, .password:
+            return nil
         }
     }
 
     @ViewBuilder
-    private func accountMethodRow(icon: String, iconBg: Color, iconColor: Color,
-                                  title: String, status: AccountLinkStatus,
-                                  isAsset: Bool = false,
-                                  onConnect: @escaping () -> Void,
-                                  onChange: @escaping () -> Void,
-                                  onRemove: @escaping () -> Void) -> some View {
-        HStack(spacing: 14) {
-            ZStack {
-                RoundedRectangle(cornerRadius: DS.iconSz * 0.26)
-                    .fill(iconBg)
-                    .frame(width: DS.iconSz, height: DS.iconSz)
-                if isAsset {
-                    Image(icon)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: DS.iconSz * 0.56, height: DS.iconSz * 0.56)
-                } else {
-                    Image(systemName: icon)
-                        .font(.system(size: 17, weight: .medium))
-                        .foregroundStyle(iconColor)
+    private func accountMethodRow(kind: AuthMethodKind,
+                                  icon: String, iconBg: Color, iconColor: Color,
+                                  isAsset: Bool = false) -> some View {
+        let status = authStatus(for: kind)
+        let subtitle = authSubtitle(for: kind)
+
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            selectedAuthMethod = kind
+        } label: {
+            HStack(spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: DS.iconSz * 0.26)
+                        .fill(iconBg)
+                        .frame(width: DS.iconSz, height: DS.iconSz)
+                    if isAsset {
+                        Image(icon)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: DS.iconSz * 0.56, height: DS.iconSz * 0.56)
+                    } else {
+                        Image(systemName: icon)
+                            .font(.system(size: 17, weight: .medium))
+                            .foregroundStyle(iconColor)
+                    }
                 }
-            }
-            Text(title).font(.system(size: DS.bodySz)).foregroundStyle(fg)
-            Spacer()
-            switch status {
-            case .connected:
-                HStack(spacing: 4) {
-                    Circle().fill(.green).frame(width: 6, height: 6)
-                    Text("Подключён").font(.system(size: 12)).foregroundStyle(.green)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(kind.title).font(.system(size: DS.bodySz)).foregroundStyle(fg)
+                    if let subtitle {
+                        Text(subtitle)
+                            .font(.system(size: 11))
+                            .foregroundStyle(fg.opacity(0.45))
+                            .lineLimit(1)
+                    }
                 }
-            case .notConnected:
-                Text("Подключить")
-                    .font(.system(size: 12))
-                    .foregroundStyle(DS.accent1.opacity(0.7))
-                    .padding(.horizontal, 10).padding(.vertical, 4)
-                    .background(DS.accent1.opacity(0.1), in: Capsule())
+                Spacer()
+                switch status {
+                case .connected:
+                    HStack(spacing: 4) {
+                        Circle().fill(.green).frame(width: 6, height: 6)
+                        Text("Подключён").font(.system(size: 12)).foregroundStyle(.green)
+                    }
+                case .notConnected:
+                    Text("Подключить")
+                        .font(.system(size: 12))
+                        .foregroundStyle(DS.accent1.opacity(0.7))
+                        .padding(.horizontal, 10).padding(.vertical, 4)
+                        .background(DS.accent1.opacity(0.1), in: Capsule())
+                }
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(fg.opacity(0.25))
             }
+            .padding(.horizontal, DS.hPad)
+            .padding(.vertical, DS.rowV)
+            .contentShape(Rectangle())
         }
-        .padding(.horizontal, DS.hPad)
-        .padding(.vertical, DS.rowV)
-        .contextMenu {
-            if status == .notConnected {
-                Button { onConnect() } label: { Label("Подключить", systemImage: "link") }
-            } else {
-                Button { onChange() } label: { Label("Изменить", systemImage: "pencil") }
-                Button(role: .destructive) { onRemove() } label: { Label("Отключить", systemImage: "link.badge.minus") }
-            }
-        }
+        .buttonStyle(PressableButtonStyle())
     }
 
     // MARK: - Support & Info
@@ -1371,6 +1437,54 @@ struct SettingsView: View {
         }
         if other > 0 { items.append(CacheItem(name: "Прочее", icon: "folder.fill", size: other)) }
         return items.sorted { $0.size > $1.size }
+    }
+
+    // MARK: - Auth Method Handlers
+
+    private func handleConnect(kind: AuthMethodKind) {
+        selectedAuthMethod = nil
+        switch kind {
+        case .email, .password:
+            // Email+Password провайдер линкуется через тот же экран смены email —
+            // пользователь задаёт email и пароль, Firebase делает link автоматически.
+            if kind == .email { showChangeEmail = true } else { showChangePassword = true }
+        case .phone:
+            showLinkPhone = true
+        case .apple, .google:
+            // Apple/Google link-flow требует полноценного OAuth presentation —
+            // пока показываем заглушку через Alert.
+            authErrorMessage = "Привязка \(kind.title) через экран настроек будет добавлена в следующей версии. Сейчас — выйди и войди через \(kind.title), чтобы связать аккаунт."
+            showAuthError = true
+        }
+    }
+
+    private func handleChange(kind: AuthMethodKind) {
+        selectedAuthMethod = nil
+        switch kind {
+        case .email:    showChangeEmail = true
+        case .password: showChangePassword = true
+        case .phone:    showLinkPhone = true
+        case .apple, .google: break
+        }
+    }
+
+    private func handleDisconnect(kind: AuthMethodKind) {
+        selectedAuthMethod = nil
+        Task {
+            do {
+                try await authManager.unlink(providerID: kind.providerID)
+                await MainActor.run {
+                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                }
+            } catch {
+                await MainActor.run {
+                    authErrorMessage = (error as? LocalizedError)?.errorDescription
+                        ?? error.localizedDescription
+                    showAuthError = true
+                    UINotificationFeedbackGenerator().notificationOccurred(.error)
+                }
+            }
+        }
     }
 
     // MARK: - Integration State
@@ -1801,6 +1915,208 @@ struct IntegrationDetailSheet: View {
                 .onChanged { _ in withAnimation(.easeInOut(duration: 0.1)) { actionPressed = true } }
                 .onEnded { _ in withAnimation(.easeInOut(duration: 0.15)) { actionPressed = false } }
         )
+    }
+}
+
+// MARK: - Auth Method Sheet
+
+struct AuthMethodSheet: View {
+    let kind: SettingsView.AuthMethodKind
+    let status: AccountLinkStatus
+    let subtitle: String?
+    let onConnect: () -> Void
+    let onChange: () -> Void
+    let onDisconnect: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var cs
+    @State private var closePressed = false
+    @State private var confirmDisconnect = false
+
+    private var fg: Color { cs == .dark ? .white : Color(red:0.11,green:0.11,blue:0.14) }
+    private var connected: Bool { status == .connected }
+
+    private var iconBg: Color {
+        switch kind {
+        case .apple:    return cs == .dark ? Color(red:0.2,green:0.2,blue:0.22) : Color(red:0.85,green:0.85,blue:0.87)
+        case .google:   return .white
+        case .email:    return Color(red:0.0,green:0.35,blue:0.9)
+        case .password: return Color(red:0.4,green:0.4,blue:0.45)
+        case .phone:    return Color(red:0.1,green:0.7,blue:0.3)
+        }
+    }
+
+    private var iconName: String {
+        switch kind {
+        case .apple:    return "apple.logo"
+        case .google:   return "Google-icon"
+        case .email:    return "envelope.fill"
+        case .password: return "lock.fill"
+        case .phone:    return "phone.fill"
+        }
+    }
+
+    private var description: String {
+        switch kind {
+        case .apple:
+            return "Sign in with Apple — приватный способ входа, который не передаёт твой email рекламным сетям."
+        case .google:
+            return "Вход через Google-аккаунт. Быстро и без паролей."
+        case .email:
+            return "Классический вход по email и паролю. Работает на любом устройстве без внешних провайдеров."
+        case .password:
+            return "Пароль используется при входе по email. Можно поменять в любой момент."
+        case .phone:
+            return "Вход или восстановление доступа через SMS-код на твой номер."
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 20) {
+                    // Иконка
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .fill(iconBg)
+                            .frame(width: 88, height: 88)
+                            .shadow(color: iconBg.opacity(0.35), radius: 12, y: 6)
+                        iconView
+                    }
+                    .padding(.top, 12)
+
+                    VStack(spacing: 6) {
+                        Text(kind.title)
+                            .font(.system(size: 24, weight: .bold, design: .rounded))
+                            .foregroundStyle(fg)
+                        statusPill
+                        if let subtitle, !subtitle.isEmpty {
+                            Text(subtitle)
+                                .font(.system(size: 13, design: .monospaced))
+                                .foregroundStyle(fg.opacity(0.5))
+                                .padding(.top, 2)
+                        }
+                    }
+
+                    Text(description)
+                        .font(.system(size: 14))
+                        .foregroundStyle(fg.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 28)
+
+                    // Действия
+                    VStack(spacing: 10) {
+                        if connected {
+                            if kind == .email || kind == .password || kind == .phone {
+                                actionButton(title: "Изменить",
+                                             icon: "pencil",
+                                             tint: Color(red: 0.0, green: 0.48, blue: 1.0),
+                                             filled: false,
+                                             action: onChange)
+                            }
+                            actionButton(title: "Отключить",
+                                         icon: "link.badge.minus",
+                                         tint: .red,
+                                         filled: false,
+                                         destructive: true,
+                                         action: { confirmDisconnect = true })
+                        } else {
+                            actionButton(title: "Подключить",
+                                         icon: "link",
+                                         tint: Color(red: 0.0, green: 0.48, blue: 1.0),
+                                         filled: true,
+                                         action: onConnect)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+
+                    Spacer(minLength: 20)
+                }
+                .padding(.bottom, 24)
+            }
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(fg)
+                        .scaleEffect(closePressed ? 0.88 : 1.0)
+                        .animation(.easeInOut(duration: 0.18), value: closePressed)
+                        .contentShape(Rectangle())
+                        .highPriorityGesture(
+                            DragGesture(minimumDistance: 0)
+                                .onChanged { _ in closePressed = true }
+                                .onEnded { g in
+                                    closePressed = false
+                                    if abs(g.translation.width) < 18 && abs(g.translation.height) < 18 {
+                                        dismiss()
+                                    }
+                                }
+                        )
+                }
+            }
+            .alert("Отключить \(kind.title)?", isPresented: $confirmDisconnect) {
+                Button("Отключить", role: .destructive) { onDisconnect() }
+                Button("Отмена", role: .cancel) {}
+            } message: {
+                Text("Ты сможешь привязать \(kind.title) обратно в любой момент. Важно оставить минимум один способ входа, иначе ты не сможешь войти в аккаунт.")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var iconView: some View {
+        if kind == .google {
+            Image("Google-icon")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 44, height: 44)
+        } else {
+            Image(systemName: iconName)
+                .font(.system(size: 36, weight: .medium))
+                .foregroundStyle(kind == .apple ? (cs == .dark ? Color.white : Color.black) : .white)
+        }
+    }
+
+    private var statusPill: some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(connected ? Color.green : fg.opacity(0.35))
+                .frame(width: 8, height: 8)
+            Text(connected ? "Подключено" : "Не подключено")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(connected ? .green : fg.opacity(0.5))
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 5)
+        .background(Capsule().fill((connected ? Color.green : fg).opacity(0.10)))
+    }
+
+    private func actionButton(title: String, icon: String, tint: Color,
+                              filled: Bool, destructive: Bool = false,
+                              action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 15, weight: .semibold))
+                Text(title)
+                    .font(.system(size: 15, weight: .semibold))
+            }
+            .foregroundStyle(filled ? .white : tint)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(filled ? tint : tint.opacity(destructive ? 0.08 : 0.12))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(filled ? .clear : tint.opacity(0.25), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
     }
 }
 

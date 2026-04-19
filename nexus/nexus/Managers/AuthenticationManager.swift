@@ -282,6 +282,87 @@ final class AuthenticationManager: ObservableObject {
         #endif
     }
 
+    var linkedEmailAddress: String? {
+        #if canImport(FirebaseAuth)
+        return Auth.auth().currentUser?.email
+        #else
+        return nil
+        #endif
+    }
+
+    // MARK: - Unlink Provider
+
+    /// Отвязывает провайдер от текущего аккаунта. Firebase запрещает оставить
+    /// пользователя без единого способа входа — проверяем заранее.
+    func unlink(providerID: String) async throws {
+        #if canImport(FirebaseAuth)
+        guard let user = Auth.auth().currentUser else {
+            throw AuthError.unknownError
+        }
+        guard linkedProviders.count > 1 else {
+            throw AuthError.cannotUnlinkLastProvider
+        }
+        _ = try await user.unlink(fromProvider: providerID)
+        // Обновляем опубликованный firebaseUser, чтобы UI перерисовался
+        if let updated = Auth.auth().currentUser {
+            self.firebaseUser = FirebaseUserInfo(
+                uid: updated.uid,
+                email: updated.email,
+                displayName: updated.displayName,
+                photoURL: updated.photoURL?.absoluteString
+            )
+        }
+        #else
+        throw AuthError.firebaseNotAvailable
+        #endif
+    }
+
+    // MARK: - Link Providers (attach to existing account)
+
+    #if canImport(FirebaseAuth)
+    /// Линкует Google-аккаунт к текущему пользователю.
+    func linkGoogle() async throws {
+        #if canImport(GoogleSignIn) && canImport(FirebaseCore)
+        guard let user = Auth.auth().currentUser else { throw AuthError.unknownError }
+        guard let clientID = FirebaseApp.app()?.options.clientID else {
+            throw AuthError.configurationError
+        }
+        GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
+        guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let rootVC = scene.windows.first?.rootViewController else {
+            throw AuthError.noRootViewController
+        }
+        let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: rootVC)
+        guard let idToken = result.user.idToken?.tokenString else {
+            throw AuthError.tokenMissing
+        }
+        let credential = GoogleAuthProvider.credential(
+            withIDToken: idToken,
+            accessToken: result.user.accessToken.tokenString
+        )
+        _ = try await user.link(with: credential)
+        #else
+        throw AuthError.firebaseNotAvailable
+        #endif
+    }
+
+    /// Линкует Apple-аккаунт к текущему пользователю.
+    func linkApple(authorization: ASAuthorization, nonce: String) async throws {
+        guard let user = Auth.auth().currentUser else { throw AuthError.unknownError }
+        guard let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential,
+              let appleIDToken = appleIDCredential.identityToken,
+              let idTokenString = String(data: appleIDToken, encoding: .utf8) else {
+            throw AuthError.tokenMissing
+        }
+        let credential = OAuthProvider.appleCredential(
+            withIDToken: idTokenString,
+            rawNonce: nonce,
+            fullName: appleIDCredential.fullName
+        )
+        _ = try await user.link(with: credential)
+    }
+    #endif
+
     // MARK: - Phone Auth
 
     #if canImport(FirebaseAuth)
@@ -391,6 +472,7 @@ enum AuthError: LocalizedError {
     case noRootViewController
     case tokenMissing
     case unknownError
+    case cannotUnlinkLastProvider
 
     var errorDescription: String? {
         switch self {
@@ -399,6 +481,7 @@ enum AuthError: LocalizedError {
         case .noRootViewController: return "Не удалось открыть окно авторизации."
         case .tokenMissing: return "Не удалось получить токен."
         case .unknownError: return "Неизвестная ошибка авторизации."
+        case .cannotUnlinkLastProvider: return "Нельзя отключить последний способ входа — иначе ты потеряешь доступ к аккаунту."
         }
     }
 }
