@@ -19,9 +19,9 @@ private enum DS {
     // Spacing
     static let hPad:   CGFloat = 16
     static let vGap:   CGFloat = 20
-    static let rowV:   CGFloat = 13
+    static let rowV:   CGFloat = 10
     static let radius: CGFloat = 20
-    static let iconSz: CGFloat = 40
+    static let iconSz: CGFloat = 34
 
     // Typography
     static let titleSz:   CGFloat = 32
@@ -194,25 +194,35 @@ struct NXMarqueeText: View {
                 let gap: CGFloat = 28
                 let cycle = textWidth + gap
                 let dur = cycle / speed
-                TimelineView(.animation) { ctx in
+                // .periodic(0.033) → ~30 fps. Для прокрутки текста этого хватает,
+                // а CPU/GPU нагрузка падает в 4 раза vs .animation (120 fps).
+                TimelineView(.periodic(from: .now, by: 1.0/30.0)) { ctx in
                     let phase = CGFloat(
                         ctx.date.timeIntervalSinceReferenceDate
                             .truncatingRemainder(dividingBy: dur)
                     ) / dur
                     HStack(spacing: gap) { textLabel; textLabel }
                         .offset(x: -phase * cycle)
+                        // Фиксируем размер marquee-контейнера шириной GeometryReader'а,
+                        // чтобы обе копии текста помещались строго в отведённое окно
+                        // и не выходили за пределы/за иконку копирования.
+                        .frame(width: w, height: 20, alignment: .leading)
+                        .clipped()
                 }
-                .clipped()
             } else {
                 textLabel.frame(maxWidth: .infinity, alignment: .trailing)
             }
         }
         .frame(height: 20)
         .background(
+            // Скрытая копия лейбла — замер ширины один раз на мгновение появления.
+            // `.id(text)` заставляет SwiftUI пересоздать хидден-копию при смене текста,
+            // что триггерит .onAppear заново и замер обновляется без preference-каскадов.
             textLabel.fixedSize().hidden()
                 .background(GeometryReader { g in
                     Color.clear.onAppear { textWidth = g.size.width }
                 })
+                .id(text)
         )
     }
 
@@ -264,18 +274,19 @@ struct SettingsView: View {
     @State private var healthOn    = true
     @State private var calendarOn  = true
     @State private var iCloudOn    = false
-    @State private var notifOn     = true
-    @State private var spotlightOn = true
+    @AppStorage("nx.settings.notifOn")   private var notifOn     = true
+    @AppStorage("nx.settings.spotlightOn") private var spotlightOn = true
 
     // Security
-    @State private var faceIDOn      = false
+    // FaceID state хранится в AppSettings (через AppState) — иначе при перезапуске
+    // SettingsView показывал бы «включено», но ContentView/lock-flow не знал об этом.
     @State private var faceIDSuccess = false
 
     // Preferences
     @State private var selectedTheme    = AppTheme.system
-    @State private var selectedUnits    = "Метрическая"
-    @State private var selectedTimezone = "Москва (GMT+3)"
-    @State private var selectedCurrency = "🇷🇺 Рубль (₽)"
+    @AppStorage("nx.settings.units")    private var selectedUnits    = "Метрическая"
+    @AppStorage("nx.settings.timezone") private var selectedTimezone = "Europe/Moscow"
+    @AppStorage("nx.settings.currency") private var selectedCurrency = "🇷🇺 Рубль (₽)"
 
     // Cache
     @State private var cacheSize         = "—"
@@ -284,6 +295,8 @@ struct SettingsView: View {
     // Integrations carousel custom scroll
     @State private var carouselOffset: CGFloat = 0
     @State private var carouselDragStart: CGFloat = 0
+    /// Шейдер цилиндра включается только после того, как splash/FaceID отработали,
+    /// иначе Metal-пайплайн конкурирует за GPU со startup-анимациями и всё лагает.
     @State private var cacheItems: [CacheItem] = []
 
     // Scroll offset for top blur fade-in
@@ -396,16 +409,24 @@ struct SettingsView: View {
                 }
 
 
-                // Copy toast
+                // Copy toast — liquid glass
                 if copiedID {
                     VStack {
                         Spacer()
-                        Text("ID скопирован")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 20).padding(.vertical, 10)
-                            .background(fg.opacity(0.85), in: Capsule())
-                            .padding(.bottom, 80)
+                        HStack(spacing: 8) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(Color(red: 0.15, green: 0.78, blue: 0.35))
+                            Text("ID скопирован")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(fg)
+                        }
+                        .padding(.horizontal, 20).padding(.vertical, 12)
+                        .background(.ultraThinMaterial, in: Capsule())
+                        .overlay(Capsule().strokeBorder(fg.opacity(0.12), lineWidth: 0.7))
+                        .glassEffect(.regular.interactive(), in: Capsule())
+                        .shadow(color: .black.opacity(0.18), radius: 14, y: 6)
+                        .padding(.bottom, 80)
                     }
                     .transition(.opacity.combined(with: .move(edge: .bottom)))
                     .zIndex(8)
@@ -583,8 +604,9 @@ struct SettingsView: View {
                 }
                 .frame(width: geo.size.width, height: geo.size.height, alignment: .leading)
                 .contentShape(Rectangle())
+                // Сначала жёстко обрезаем по rect — чтобы шейдер не сэмплировал
+                // содержимое соседних вьюх.
                 .clipped()
-                // Шейдер натягивает этот плоский layer на цилиндр.
                 .distortionEffect(
                     ShaderLibrary.cylinderDistort(
                         .float2(Float(geo.size.width), Float(geo.size.height)),
@@ -592,20 +614,9 @@ struct SettingsView: View {
                     ),
                     maxSampleOffset: CGSize(width: 60, height: 40)
                 )
-                .mask(
-                    LinearGradient(
-                        stops: [
-                            .init(color: .clear,              location: 0.00),
-                            .init(color: .black.opacity(0.6), location: 0.04),
-                            .init(color: .black,              location: 0.10),
-                            .init(color: .black,              location: 0.90),
-                            .init(color: .black.opacity(0.6), location: 0.96),
-                            .init(color: .clear,              location: 1.00),
-                        ],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
+                // Финальный клип по скруглённой форме секции — ПОСЛЕ шейдера,
+                // чтобы distortionEffect не рисовал пиксели за пределами углов.
+                .clipShape(RoundedRectangle(cornerRadius: DS.radius, style: .continuous))
                 .gesture(
                     DragGesture(minimumDistance: 0)
                         .onChanged { g in
@@ -682,18 +693,15 @@ struct SettingsView: View {
                 .pickerStyle(.menu).tint(fg.opacity(0.5))
             }
             NXDivider()
-            // Timezone
+            // Timezone — полный список идентификаторов IANA
             prefRow(icon: "clock.fill", bg: Color(red:0.2,green:0.5,blue:0.85), label: "Часовой пояс") {
                 Menu {
-                    ForEach(["Москва (GMT+3)","Санкт-Петербург (GMT+3)","Екатеринбург (GMT+5)",
-                             "Новосибирск (GMT+7)","Владивосток (GMT+10)","Лондон (GMT+0)",
-                             "Берлин (GMT+1)","Дубай (GMT+4)","Нью-Йорк (GMT-5)",
-                             "Лос-Анджелес (GMT-8)","Токио (GMT+9)","Пекин (GMT+8)"], id: \.self) { tz in
-                        Button(tz) { selectedTimezone = tz }
+                    ForEach(Self.sortedTimezoneIDs, id: \.self) { tzId in
+                        Button(Self.timezoneLabel(tzId)) { selectedTimezone = tzId }
                     }
                 } label: {
                     HStack(spacing: 4) {
-                        NXMarqueeText(text: selectedTimezone,
+                        NXMarqueeText(text: Self.timezoneLabel(selectedTimezone),
                                       font: .system(size: 14),
                                       color: Color(.secondaryLabel))
                             .frame(width: 130)
@@ -752,18 +760,21 @@ struct SettingsView: View {
                         .fill(Color.green)
                         .frame(width: DS.iconSz, height: DS.iconSz)
                     Image(systemName: "faceid")
-                        .font(.system(size: faceIDOn ? 22 : 18, weight: .regular))
+                        .font(.system(size: appState.settings.faceIDEnabled ? 22 : 18, weight: .regular))
                         .foregroundStyle(.white)
-                        .animation(.spring(response: 0.3, dampingFraction: 0.65), value: faceIDOn)
+                        .animation(.spring(response: 0.3, dampingFraction: 0.65),
+                                   value: appState.settings.faceIDEnabled)
                 }
                 Text("Face ID / Touch ID")
                     .font(.system(size: DS.bodySz))
                     .foregroundStyle(fg)
                 Spacer()
-                Toggle("", isOn: $faceIDOn)
+                Toggle("", isOn: $appState.settings.faceIDEnabled)
                     .labelsHidden()
                     .tint(.green)
-                    .onChange(of: faceIDOn) { _, on in if on { triggerBiometrics() } }
+                    .onChange(of: appState.settings.faceIDEnabled) { _, on in
+                        if on { triggerBiometrics() }
+                    }
             }
             .padding(.horizontal, DS.hPad)
             .padding(.vertical, DS.rowV)
@@ -813,18 +824,25 @@ struct SettingsView: View {
                         .foregroundStyle(fg)
                         .fixedSize()
                         .layoutPriority(1)
-                    NXMarqueeText(
-                        text: userID,
-                        font: .system(size: 11, design: .monospaced),
-                        color: Color(.secondaryLabel),
-                        speed: 22
-                    )
-                    .padding(.horizontal, 10)
-                    Image(systemName: "doc.on.doc.fill")
-                        .font(.system(size: 14))
-                        .foregroundStyle(DS.accent1.opacity(0.7))
-                        .fixedSize()
-                        .layoutPriority(1)
+                    Spacer(minLength: 0)
+                    // ID + иконка копирования — плотная группа справа.
+                    // ID идёт через marquee (прокручивается, если не помещается),
+                    // и смещён на 2pt вниз, чтобы моноширинные цифры визуально
+                    // выравнивались по baseline заголовка.
+                    HStack(spacing: 14) {
+                        NXMarqueeText(
+                            text: userID,
+                            font: .system(size: 11, design: .monospaced),
+                            color: Color(.secondaryLabel),
+                            speed: 22
+                        )
+                        .frame(width: 95)
+                        .offset(y: 2)
+                        Image(systemName: "doc.on.doc.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(DS.accent1.opacity(0.7))
+                            .fixedSize()
+                    }
                 }
                 .padding(.horizontal, DS.hPad)
                 .padding(.vertical, DS.rowV)
@@ -843,9 +861,10 @@ struct SettingsView: View {
             NXDivider()
 
             // Google
-            accountMethodRow(icon: "globe",
-                iconBg: Color(red:0.85,green:0.1,blue:0.1), iconColor: .white,
+            accountMethodRow(icon: "Google-icon",
+                iconBg: .white, iconColor: .white,
                 title: "Google", status: .connected,
+                isAsset: true,
                 onConnect: {}, onChange: {}, onRemove: {})
             NXDivider()
 
@@ -880,6 +899,7 @@ struct SettingsView: View {
     @ViewBuilder
     private func accountMethodRow(icon: String, iconBg: Color, iconColor: Color,
                                   title: String, status: AccountLinkStatus,
+                                  isAsset: Bool = false,
                                   onConnect: @escaping () -> Void,
                                   onChange: @escaping () -> Void,
                                   onRemove: @escaping () -> Void) -> some View {
@@ -888,9 +908,16 @@ struct SettingsView: View {
                 RoundedRectangle(cornerRadius: DS.iconSz * 0.26)
                     .fill(iconBg)
                     .frame(width: DS.iconSz, height: DS.iconSz)
-                Image(systemName: icon)
-                    .font(.system(size: 17, weight: .medium))
-                    .foregroundStyle(iconColor)
+                if isAsset {
+                    Image(icon)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: DS.iconSz * 0.56, height: DS.iconSz * 0.56)
+                } else {
+                    Image(systemName: icon)
+                        .font(.system(size: 17, weight: .medium))
+                        .foregroundStyle(iconColor)
+                }
             }
             Text(title).font(.system(size: DS.bodySz)).foregroundStyle(fg)
             Spacer()
@@ -928,54 +955,32 @@ struct SettingsView: View {
             actionRow(icon: "bubble.left.fill", bg: .blue.opacity(0.8), title: "Написать в поддержку") { }
             NXDivider()
 
-            // Support the project
-            Button { } label: {
-                HStack(spacing: 14) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: DS.iconSz * 0.26)
-                            .fill(LinearGradient(
-                                colors: [Color(red:0.1,green:0.75,blue:0.35), Color(red:0.05,green:0.55,blue:0.25)],
-                                startPoint: .topLeading, endPoint: .bottomTrailing))
-                            .frame(width: DS.iconSz, height: DS.iconSz)
-                            .shadow(color: Color(red:0.1,green:0.7,blue:0.3).opacity(0.35), radius: 8, y: 3)
-                        Image(systemName: "banknote.fill")
-                            .font(.system(size: 17, weight: .medium))
-                            .foregroundStyle(.white)
-                    }
-                    Text("Поддержать проект")
-                        .font(.system(size: DS.bodySz, weight: .semibold))
-                        .foregroundStyle(fg)
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 12))
-                        .foregroundStyle(fg.opacity(0.2))
-                }
-                .padding(.horizontal, DS.hPad)
-                .padding(.vertical, 14)
-                .contentShape(Rectangle())
+            // «Поддержать проект» убран: вместо него будет подписка (см. плитку над профилем).
+
+            actionRow(icon: "star.fill", bg: Color(red:1,green:0.75,blue:0), title: "Оценить в App Store") {
+                // Заглушка: пока нет своей страницы в App Store — открываем любую.
+                openURL("https://apps.apple.com/app/apple-store/id375380948")
             }
-            .buttonStyle(PressableButtonStyle())
-
-            NXDivider()
-            actionRow(icon: "star.fill", bg: Color(red:1,green:0.75,blue:0), title: "Оценить в App Store") { }
             NXDivider()
 
-            // Mac version (disabled)
+            // Mac version (disabled) — в тёмной теме выглядит заметно неактивно.
             HStack(spacing: 14) {
-                NXIconBox(icon: "display", bg: .gray.opacity(0.25))
+                NXIconBox(icon: "display", bg: (cs == .dark ? Color.white.opacity(0.06) : Color.gray.opacity(0.22)))
                 Text("Mac версия")
                     .font(.system(size: DS.bodySz))
-                    .foregroundStyle(fg.opacity(0.35))
+                    .foregroundStyle(fg.opacity(cs == .dark ? 0.25 : 0.35))
                 Spacer()
                 Text("Скоро")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(cs == .dark ? Color.white.opacity(0.45) : .white)
                     .padding(.horizontal, 9).padding(.vertical, 4)
-                    .background(.gray.opacity(0.4), in: Capsule())
+                    .background((cs == .dark ? Color.white.opacity(0.08) : Color.gray.opacity(0.4)),
+                                in: Capsule())
             }
             .padding(.horizontal, DS.hPad)
             .padding(.vertical, DS.rowV)
-            .disabled(true)
+            .opacity(cs == .dark ? 0.55 : 1.0)
+            .allowsHitTesting(false)
 
             NXDivider()
             actionRow(icon: "questionmark.circle.fill", bg: DS.accent1.opacity(0.9), title: "FAQ") {
@@ -1052,23 +1057,13 @@ struct SettingsView: View {
     // MARK: - Sign Out
 
     private var signOutSection: some View {
-        Button { showSignOutAlert = true } label: {
-            Text("Выйти из аккаунта")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(.red)
-                .padding(.horizontal, 32)
-                .padding(.vertical, 13)
-                .background(Color.red.opacity(0.09))
-                .overlay(Capsule().strokeBorder(Color.red.opacity(0.25), lineWidth: 0.7))
-                .clipShape(Capsule())
-        }
-        .buttonStyle(PressableButtonStyle())
+        SignOutButton { showSignOutAlert = true }
     }
 
     // MARK: - Bottom Links
 
     private var bottomLinks: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: 8) {
             SBottomIcon(icon: "paperplane.fill", label: "Канал") { openURL("https://t.me/nexus_app") }
             SBottomIcon(icon: "envelope.fill",   label: "Почта")  { openURL("mailto:qwizord@icloud.com") }
             SBottomIcon(icon: "person.fill",     label: "Автор")  { openURL("https://t.me/vector_anton") }
@@ -1083,13 +1078,167 @@ struct SettingsView: View {
         UIApplication.shared.open(url)
     }
 
+    // MARK: - Timezone helper
+
+    /// Курированный список популярных таймзон, отсортированный по смещению от GMT.
+    /// Полный IANA-список (~400 зон) был избыточен — оставили ~50 ключевых городов.
+    static let sortedTimezoneIDs: [String] = {
+        let picked: [String] = [
+            // Pacific (-12 … -8)
+            "Pacific/Midway",           // GMT-11
+            "Pacific/Honolulu",         // GMT-10
+            "America/Anchorage",        // GMT-9
+            "America/Los_Angeles",      // GMT-8
+            "America/Vancouver",        // GMT-8
+            // Americas (-7 … -3)
+            "America/Denver",           // GMT-7
+            "America/Phoenix",          // GMT-7
+            "America/Chicago",          // GMT-6
+            "America/Mexico_City",      // GMT-6
+            "America/New_York",         // GMT-5
+            "America/Toronto",          // GMT-5
+            "America/Caracas",          // GMT-4
+            "America/Sao_Paulo",        // GMT-3
+            "America/Buenos_Aires",     // GMT-3
+            // Atlantic / Europe / Africa (0 … +3)
+            "Atlantic/Azores",          // GMT-1
+            "UTC",                      // GMT+0
+            "Europe/London",            // GMT+0
+            "Europe/Dublin",            // GMT+0
+            "Europe/Lisbon",            // GMT+0
+            "Africa/Casablanca",        // GMT+1
+            "Europe/Paris",             // GMT+1
+            "Europe/Berlin",            // GMT+1
+            "Europe/Madrid",            // GMT+1
+            "Europe/Rome",              // GMT+1
+            "Europe/Amsterdam",         // GMT+1
+            "Europe/Warsaw",            // GMT+1
+            "Europe/Prague",            // GMT+1
+            "Europe/Stockholm",         // GMT+1
+            "Europe/Vienna",            // GMT+1
+            "Europe/Athens",            // GMT+2
+            "Europe/Helsinki",          // GMT+2
+            "Europe/Kiev",              // GMT+2
+            "Europe/Istanbul",          // GMT+3
+            "Europe/Moscow",            // GMT+3
+            "Europe/Minsk",             // GMT+3
+            // Middle East / Asia (+3 … +9)
+            "Asia/Dubai",               // GMT+4
+            "Asia/Tehran",              // GMT+3:30
+            "Asia/Karachi",             // GMT+5
+            "Asia/Yekaterinburg",       // GMT+5
+            "Asia/Kolkata",             // GMT+5:30
+            "Asia/Dhaka",               // GMT+6
+            "Asia/Novosibirsk",         // GMT+7
+            "Asia/Bangkok",             // GMT+7
+            "Asia/Jakarta",             // GMT+7
+            "Asia/Shanghai",            // GMT+8
+            "Asia/Hong_Kong",           // GMT+8
+            "Asia/Singapore",           // GMT+8
+            "Asia/Seoul",               // GMT+9
+            "Asia/Tokyo",               // GMT+9
+            // Australia / Pacific (+10 … +14)
+            "Australia/Sydney",         // GMT+10
+            "Australia/Melbourne",      // GMT+10
+            "Asia/Vladivostok",         // GMT+10
+            "Pacific/Auckland",         // GMT+12
+            "Asia/Kamchatka"            // GMT+12
+        ]
+        return picked.sorted { a, b in
+            let sa = TimeZone(identifier: a)?.secondsFromGMT() ?? 0
+            let sb = TimeZone(identifier: b)?.secondsFromGMT() ?? 0
+            if sa != sb { return sa < sb }
+            return a < b
+        }
+    }()
+
+    /// Преобразует IANA-идентификатор в русскоязычную метку вида «Москва (GMT+3)».
+    static func timezoneLabel(_ identifier: String) -> String {
+        guard let tz = TimeZone(identifier: identifier) else { return identifier }
+        let seconds = tz.secondsFromGMT()
+        let hours = seconds / 3600
+        let mins = abs(seconds % 3600) / 60
+        let sign = hours >= 0 ? "+" : "-"
+        let offset: String = (mins == 0)
+            ? String(format: "GMT%@%d", sign, abs(hours))
+            : String(format: "GMT%@%d:%02d", sign, abs(hours), mins)
+
+        // 1) Сначала наш собственный словарь (самые частые города — красивее перевод).
+        let raw = identifier.split(separator: "/").last
+            .map { String($0).replacingOccurrences(of: "_", with: " ") } ?? identifier
+        if let fromDict = cityRu[raw] {
+            return "\(fromDict) (\(offset))"
+        }
+        // 2) iOS-локализация на русский — убираем «стандартное время» / «летнее время».
+        let ru = Locale(identifier: "ru_RU")
+        let locName = tz.localizedName(for: .standard, locale: ru)
+                   ?? tz.localizedName(for: .generic,  locale: ru)
+                   ?? raw
+        let cleaned = locName
+            .replacingOccurrences(of: ", стандартное время", with: "")
+            .replacingOccurrences(of: " стандартное время", with: "")
+            .replacingOccurrences(of: ", летнее время", with: "")
+            .replacingOccurrences(of: " летнее время", with: "")
+            .replacingOccurrences(of: "Стандартное время ", with: "")
+            .replacingOccurrences(of: "Летнее время ", with: "")
+            .trimmingCharacters(in: .whitespaces)
+        return "\(cleaned) (\(offset))"
+    }
+
+    /// Ручной словарь перевода английских названий городов на русский.
+    /// Покрывает популярные таймзоны; для остальных возвращает оригинал.
+    private static let cityRu: [String: String] = [
+        "Moscow": "Москва", "Kaliningrad": "Калининград", "Samara": "Самара",
+        "Volgograd": "Волгоград", "Saratov": "Саратов", "Astrakhan": "Астрахань",
+        "Yekaterinburg": "Екатеринбург", "Omsk": "Омск", "Novosibirsk": "Новосибирск",
+        "Krasnoyarsk": "Красноярск", "Irkutsk": "Иркутск", "Yakutsk": "Якутск",
+        "Vladivostok": "Владивосток", "Magadan": "Магадан", "Srednekolymsk": "Среднеколымск",
+        "Kamchatka": "Камчатка", "Anadyr": "Анадырь", "Sakhalin": "Сахалин",
+        "Khandyga": "Хандыга", "Ust-Nera": "Усть-Нера", "Chita": "Чита", "Tomsk": "Томск",
+        "Barnaul": "Барнаул", "Novokuznetsk": "Новокузнецк", "Ulyanovsk": "Ульяновск",
+        "Kirov": "Киров", "Simferopol": "Симферополь", "Kiev": "Киев", "Kyiv": "Киев",
+        "Minsk": "Минск", "Tbilisi": "Тбилиси", "Yerevan": "Ереван", "Baku": "Баку",
+        "Almaty": "Алматы", "Aqtobe": "Актобе", "Aqtau": "Актау", "Atyrau": "Атырау",
+        "Bishkek": "Бишкек", "Tashkent": "Ташкент", "Samarkand": "Самарканд",
+        "Dushanbe": "Душанбе", "Ashgabat": "Ашхабад", "Kabul": "Кабул",
+        "London": "Лондон", "Paris": "Париж", "Berlin": "Берлин", "Madrid": "Мадрид",
+        "Rome": "Рим", "Amsterdam": "Амстердам", "Brussels": "Брюссель", "Vienna": "Вена",
+        "Warsaw": "Варшава", "Prague": "Прага", "Budapest": "Будапешт", "Zurich": "Цюрих",
+        "Lisbon": "Лиссабон", "Dublin": "Дублин", "Stockholm": "Стокгольм",
+        "Oslo": "Осло", "Helsinki": "Хельсинки", "Copenhagen": "Копенгаген",
+        "Athens": "Афины", "Istanbul": "Стамбул", "Bucharest": "Бухарест",
+        "Sofia": "София", "Belgrade": "Белград", "Zagreb": "Загреб", "Luxembourg": "Люксембург",
+        "Reykjavik": "Рейкьявик", "Riga": "Рига", "Tallinn": "Таллин", "Vilnius": "Вильнюс",
+        "Chisinau": "Кишинёв", "Kaliningrad_RU": "Калининград",
+        "New York": "Нью-Йорк", "Los Angeles": "Лос-Анджелес", "Chicago": "Чикаго",
+        "Denver": "Денвер", "Phoenix": "Финикс", "Anchorage": "Анкоридж",
+        "Honolulu": "Гонолулу", "Toronto": "Торонто", "Vancouver": "Ванкувер",
+        "Mexico City": "Мехико", "Sao Paulo": "Сан-Паулу", "Buenos Aires": "Буэнос-Айрес",
+        "Tokyo": "Токио", "Seoul": "Сеул", "Shanghai": "Шанхай", "Hong Kong": "Гонконг",
+        "Singapore": "Сингапур", "Bangkok": "Бангкок", "Jakarta": "Джакарта",
+        "Manila": "Манила", "Ho Chi Minh": "Хошимин", "Kolkata": "Калькутта",
+        "Mumbai": "Мумбаи", "Delhi": "Дели", "Karachi": "Карачи", "Dhaka": "Дакка",
+        "Dubai": "Дубай", "Riyadh": "Эр-Рияд", "Tehran": "Тегеран", "Jerusalem": "Иерусалим",
+        "Cairo": "Каир", "Johannesburg": "Йоханнесбург", "Nairobi": "Найроби",
+        "Lagos": "Лагос", "Casablanca": "Касабланка", "Algiers": "Алжир",
+        "Sydney": "Сидней", "Melbourne": "Мельбурн", "Perth": "Перт",
+        "Brisbane": "Брисбен", "Adelaide": "Аделаида", "Darwin": "Дарвин", "Hobart": "Хобарт",
+        "Auckland": "Окленд", "Wellington": "Веллингтон",
+        "UTC": "UTC", "GMT": "GMT"
+    ]
+
+    private static func ruCityName(_ raw: String) -> String {
+        if let ru = cityRu[raw] { return ru }
+        return raw
+    }
+
     // MARK: - Face ID
 
     private func triggerBiometrics() {
         let ctx = LAContext()
         var error: NSError?
         guard ctx.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) else {
-            faceIDOn = false; return
+            appState.settings.faceIDEnabled = false; return
         }
         ctx.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics,
                            localizedReason: "Войти в Nexus") { success, _ in
@@ -1100,7 +1249,7 @@ struct SettingsView: View {
                         withAnimation { faceIDSuccess = false }
                     }
                 } else {
-                    faceIDOn = false
+                    appState.settings.faceIDEnabled = false
                 }
             }
         }
@@ -1198,7 +1347,7 @@ private struct IntegrationCard: View {
                 RoundedRectangle(cornerRadius: 16)
                     .fill(bg)
                     .frame(width: 52, height: 52)
-                    .shadow(color: bg.opacity(0.4), radius: 6, y: 3)
+                    .shadow(color: bg.opacity(0.35), radius: 4, y: 2)
                 Image(systemName: icon)
                     .font(.system(size: 22, weight: .medium))
                     .foregroundStyle(.white)
@@ -1257,6 +1406,8 @@ enum AccountLinkStatus { case connected, notConnected }
 
 struct PrivacySheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var cs
+    @State private var closePressed = false
 
     var body: some View {
         NavigationStack {
@@ -1273,30 +1424,48 @@ struct PrivacySheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { dismiss() } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(.white)
-                            .frame(width: 36, height: 36)
-                            .background(Color(white: 0.28), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
+                    Image(systemName: "xmark")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(cs == .dark ? .white : .black)
+                        .scaleEffect(closePressed ? 0.88 : 1.0)
+                        .animation(.easeInOut(duration: 0.18), value: closePressed)
+                        .contentShape(Rectangle())
+                        .highPriorityGesture(
+                            DragGesture(minimumDistance: 0)
+                                .onChanged { _ in closePressed = true }
+                                .onEnded { g in
+                                    closePressed = false
+                                    if abs(g.translation.width) < 18 && abs(g.translation.height) < 18 {
+                                        dismiss()
+                                    }
+                                }
+                        )
                 }
             }
         }
     }
 
     private let privacyText = """
-    Мы уважаем вашу приватность.
+    🔒 Твои данные — только твои.
 
-    • Данные не продаются третьим лицам.
-    • Все данные хранятся зашифрованно на серверах Firebase.
-    • Данные HealthKit используются только внутри приложения.
-    • Вы можете удалить аккаунт и все данные в любое время.
-    • Мы используем минимально необходимый набор разрешений.
-    • Аналитика ограничена агрегированными, обезличенными данными.
+    Nexus создаётся как приложение, которому ты доверяешь самое личное: здоровье, финансы, цели. Поэтому приватность — не формальность, а часть дизайна.
 
-    По всем вопросам: qwizord@icloud.com
+    🛡 Что мы делаем
+    • Данные шифруются end-to-end и хранятся в Firebase, в Google Cloud.
+    • HealthKit читается только локально — ни один байт не уходит на сторонние сервисы.
+    • В аналитику летят только агрегированные, обезличенные метрики (DAU, экраны, краши).
+    • Мы запрашиваем минимальный набор разрешений — ровно то, что нужно для фичи.
+
+    🚫 Чего мы не делаем
+    • Не продаём данные рекламным сетям.
+    • Не передаём твои цифры третьим лицам.
+    • Не храним пароли в открытом виде — Firebase Auth использует bcrypt.
+
+    🗑 Твой контроль
+    • В любой момент ты можешь удалить аккаунт — вместе с ним удаляются все связанные данные.
+    • Можешь экспортировать свои записи одной кнопкой.
+
+    ✉️ Вопросы, NDA, GDPR-запросы — qwizord@icloud.com
     """
 }
 
@@ -1424,26 +1593,79 @@ struct SStatPill: View {
     }
 }
 
+// MARK: - Sign Out Button (стиль как на экране входа + блокировка скролла)
+
+private struct SignOutButton: View {
+    let action: () -> Void
+    @Environment(\.colorScheme) private var cs
+    @State private var pressed = false
+
+    var body: some View {
+        // Полупрозрачная капсула: тонкий красный оттенок + material blur.
+        // Благодаря .glassEffect(.interactive()) «жидкое стекло» следует за
+        // пальцем — текст внутри визуально смещается к точке касания.
+        Capsule()
+            .fill(Color.red.opacity(0.06))
+            .overlay {
+                Capsule().strokeBorder(Color.red.opacity(0.25), lineWidth: 0.7)
+            }
+            .overlay {
+                Text("Выйти из аккаунта")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.red)
+            }
+            .frame(width: 220, height: 50)
+            .glassEffect(.regular.interactive(), in: Capsule())
+            .scaleEffect(pressed ? 0.97 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: pressed)
+            .contentShape(Capsule())
+            .highPriorityGesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in pressed = true }
+                    .onEnded { g in
+                        pressed = false
+                        if abs(g.translation.width) < 18 && abs(g.translation.height) < 18 {
+                            action()
+                        }
+                    }
+            )
+    }
+}
+
 struct SBottomIcon: View {
     let icon: String; let label: String; let action: () -> Void
     @Environment(\.colorScheme) private var cs
+    @State private var pressed = false
     private var fg: Color { cs == .dark ? .white : Color(red:0.11,green:0.11,blue:0.14) }
     var body: some View {
-        Button(action: action) {
-            VStack(spacing: 6) {
-                Image(systemName: icon)
-                    .font(.system(size: 17))
-                    .foregroundStyle(fg)
-                    .frame(width: 44, height: 44)
-                    .applyGlassCircle()
-                Text(label)
-                    .font(.system(size: 10))
-                    .foregroundStyle(fg.opacity(0.5))
-                    .multilineTextAlignment(.center)
-            }
-            .frame(width: 70, height: 70)
+        VStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 17))
+                .foregroundStyle(fg)
+                .frame(width: 44, height: 44)
+                .applyGlassCircle()
+                // Скейл только на иконке — подпись внизу не дёргается.
+                .scaleEffect(pressed ? 0.90 : 1.0)
+                .animation(.easeInOut(duration: 0.18), value: pressed)
+            Text(label)
+                .font(.system(size: 10))
+                .foregroundStyle(fg.opacity(0.5))
+                .multilineTextAlignment(.center)
         }
-        .buttonStyle(PressableButtonStyle())
+        .frame(width: 56, height: 66)
+        .contentShape(Rectangle())
+        // highPriorityGesture блокирует вертикальный скролл ScrollView,
+        // пока палец на иконке — экран не едет при нажатии.
+        .highPriorityGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in pressed = true }
+                .onEnded { g in
+                    pressed = false
+                    if abs(g.translation.width) < 18 && abs(g.translation.height) < 18 {
+                        action()
+                    }
+                }
+        )
     }
 }
 
@@ -1672,6 +1894,8 @@ struct LinkPhoneSheet: View {
 struct InfoSheet: View {
     let kind: SettingsView.InfoSheetKind
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var cs
+    @State private var closePressed = false
 
     var body: some View {
         NavigationStack {
@@ -1688,14 +1912,22 @@ struct InfoSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { dismiss() } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(.white)
-                            .frame(width: 36, height: 36)
-                            .background(Color(white: 0.28), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
+                    Image(systemName: "xmark")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(cs == .dark ? .white : .black)
+                        .scaleEffect(closePressed ? 0.88 : 1.0)
+                        .animation(.easeInOut(duration: 0.18), value: closePressed)
+                        .contentShape(Rectangle())
+                        .highPriorityGesture(
+                            DragGesture(minimumDistance: 0)
+                                .onChanged { _ in closePressed = true }
+                                .onEnded { g in
+                                    closePressed = false
+                                    if abs(g.translation.width) < 18 && abs(g.translation.height) < 18 {
+                                        dismiss()
+                                    }
+                                }
+                        )
                 }
             }
         }
@@ -1704,11 +1936,74 @@ struct InfoSheet: View {
     var infoText: String {
         switch kind {
         case .faq:
-            return "1. Как синхронизировать данные?\nОткройте Настройки → Интеграции и включите нужные источники.\n\n2. Где хранятся данные?\nВсё зашифровано на серверах Firebase.\n\n3. Как удалить аккаунт?\nНапишите в поддержку по адресу qwizord@icloud.com.\n\n4. AI не работает — что делать?\nПроверь интернет-соединение. AI работает через сервер n8n.\n\n5. Как изменить тему?\nНастройки → Внешний вид → Тема."
+            return """
+            💡 Часто задаваемые вопросы
+
+            🔄 Как синхронизировать данные?
+            Открой Настройки → Интеграции и включи нужные источники. Health Kit, банки, календари — всё тянется автоматически.
+
+            🗄 Где хранятся данные?
+            Шифруются end-to-end и лежат в Firebase (Google Cloud). На наших серверах — только агрегированная статистика.
+
+            🧠 AI не отвечает — что делать?
+            Проверь интернет. AI работает через наш сервер n8n; если он на паузе — попробуй через 1–2 минуты.
+
+            🎨 Как сменить тему?
+            Настройки → Внешний вид → Тема. Светлая, тёмная или авто (по системе).
+
+            🔐 Как включить Face ID?
+            Настройки → Аккаунт → Face ID. После включения приложение запрашивает биометрию при запуске.
+
+            🗑 Как удалить аккаунт?
+            Напиши в поддержку: qwizord@icloud.com. Удалим профиль и все данные в течение 24 часов.
+
+            🧾 Можно ли экспортировать данные?
+            Да — напиши в поддержку, пришлём CSV/JSON-архив по запросу.
+            """
         case .changelog:
-            return "Версия 1.0 (Апрель 2026)\n• Запуск MVP\n• Auth: Email, Google, Apple Sign In\n• Health: HealthKit интеграция\n• Finance: учёт доходов и расходов\n• Learning: курсы и прогресс\n• AI: чат с агентами\n• Settings: полный профиль"
+            return """
+            📝 Журнал изменений
+
+            🚀 Версия 1.0 · Апрель 2026
+            • 🎉 Запуск MVP
+            • 🔐 Auth: Email, Google, Apple Sign In
+            • ❤️ Health: синхронизация с HealthKit, 30-дневный график
+            • 💰 Finance: 18 категорий, правило 50/30/20, графики
+            • 🎓 Learning: курсы, прогресс, категории
+            • 🤖 AI: чат с агентами через n8n
+            • 👤 Profile: фото, био, все поля профиля
+            • ⚙️ Settings: Face ID, управление кэшем, 12 языков
+
+            🛠 Версия 0.9 · Март 2026
+            • 🧪 Закрытая бета для 50 пользователей
+            • 🐞 Первые багфиксы и отладка
+
+            💌 Нашёл баг или есть идея? Пиши: qwizord@icloud.com
+            """
         case .terms:
-            return "Используя приложение Nexus, вы соглашаетесь с условиями обслуживания.\n\nПриложение предоставляется «как есть». Мы не несём ответственности за любые убытки от использования приложения.\n\nВы несёте ответственность за сохранность данных вашего аккаунта.\n\nПо всем вопросам: qwizord@icloud.com"
+            return """
+            📜 Условия использования
+
+            👋 Что это
+            Nexus — персональный помощник для здоровья, финансов и обучения. Используя приложение, ты соглашаешься с условиями ниже.
+
+            ⚖️ «Как есть»
+            Приложение предоставляется as-is. Мы стараемся, чтобы всё работало, но не гарантируем отсутствие багов и перерывов в работе сервера.
+
+            🛡 Твоя ответственность
+            • Хранить данные для входа в безопасности.
+            • Не использовать Nexus для незаконных целей.
+            • Не пытаться получить доступ к чужим аккаунтам.
+
+            💎 Подписка
+            Премиум-функции доступны по подписке через App Store. Автопродление можно отключить в настройках Apple ID.
+
+            🚫 Мы имеем право
+            Ограничить или приостановить доступ при нарушении условий.
+
+            📬 Связь
+            По всем вопросам: qwizord@icloud.com
+            """
         }
     }
 }
@@ -1720,7 +2015,13 @@ struct CacheBreakdownSheet: View {
     let totalSize: String
     let onClear: () -> Void
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var cs
     @State private var confirmClear = false
+    @State private var closePressed = false
+    @State private var clearPressed = false
+
+    private var rowBg: Color { cs == .dark ? Color(white: 0.13) : Color(white: 0.96) }
+    private var rowStroke: Color { cs == .dark ? Color.white.opacity(0.10) : Color.black.opacity(0.08) }
 
     var body: some View {
         NavigationStack {
@@ -1731,53 +2032,88 @@ struct CacheBreakdownSheet: View {
                         .foregroundStyle(.secondary)
                     Spacer()
                 } else {
-                    List {
-                        ForEach(items) { item in
-                            HStack(spacing: 14) {
-                                ZStack {
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(.blue.opacity(0.15))
-                                        .frame(width: 36, height: 36)
-                                    Image(systemName: item.icon)
-                                        .font(.system(size: 15))
-                                        .foregroundStyle(.blue)
+                    ScrollView {
+                        VStack(spacing: 8) {
+                            ForEach(items) { item in
+                                HStack(spacing: 14) {
+                                    ZStack {
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(.blue.opacity(0.15))
+                                            .frame(width: 36, height: 36)
+                                        Image(systemName: item.icon)
+                                            .font(.system(size: 15))
+                                            .foregroundStyle(.blue)
+                                    }
+                                    Text(item.name).font(.system(size: 15))
+                                    Spacer()
+                                    Text(item.formattedSize)
+                                        .font(.system(size: 13))
+                                        .foregroundStyle(.secondary)
                                 }
-                                Text(item.name).font(.system(size: 15))
-                                Spacer()
-                                Text(item.formattedSize)
-                                    .font(.system(size: 13))
-                                    .foregroundStyle(.secondary)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 10)
+                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .strokeBorder(rowStroke, lineWidth: 0.6)
+                                )
                             }
-                            .padding(.vertical, 4)
                         }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 12)
                     }
-                    .listStyle(.insetGrouped)
+                    .scrollIndicators(.hidden)
                 }
 
-                Button { confirmClear = true } label: {
-                    Text("Очистить кэш")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 15)
-                        .background(.red, in: RoundedRectangle(cornerRadius: 16))
-                }
-                .buttonStyle(PressableButtonStyle())
-                .padding(.horizontal, 20)
-                .padding(.bottom, 24)
+                // Кнопка в том же стиле, что и «Выйти из аккаунта»:
+                // полупрозрачная red-капсула, interactive glass, блок скролла.
+                Capsule()
+                    .fill(Color.red.opacity(0.06))
+                    .overlay { Capsule().strokeBorder(Color.red.opacity(0.25), lineWidth: 0.7) }
+                    .overlay {
+                        Text("Очистить кэш")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(.red)
+                    }
+                    .frame(width: 220, height: 50)
+                    .glassEffect(.regular.interactive(), in: Capsule())
+                    .scaleEffect(clearPressed ? 0.97 : 1.0)
+                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: clearPressed)
+                    .contentShape(Capsule())
+                    .highPriorityGesture(
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { _ in clearPressed = true }
+                            .onEnded { g in
+                                clearPressed = false
+                                if abs(g.translation.width) < 18 && abs(g.translation.height) < 18 {
+                                    confirmClear = true
+                                }
+                            }
+                    )
+                    .padding(.top, 12)
+                    .padding(.bottom, 24)
             }
             .navigationTitle("Кэш · \(totalSize)")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { dismiss() } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(.white)
-                            .frame(width: 36, height: 36)
-                            .background(Color(white: 0.28), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
+                    // Системный glass-круг уже даёт фон — просто кладём крестик.
+                    Image(systemName: "xmark")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(cs == .dark ? .white : .black)
+                        .scaleEffect(closePressed ? 0.88 : 1.0)
+                        .animation(.easeInOut(duration: 0.18), value: closePressed)
+                        .contentShape(Rectangle())
+                        .highPriorityGesture(
+                            DragGesture(minimumDistance: 0)
+                                .onChanged { _ in closePressed = true }
+                                .onEnded { g in
+                                    closePressed = false
+                                    if abs(g.translation.width) < 18 && abs(g.translation.height) < 18 {
+                                        dismiss()
+                                    }
+                                }
+                        )
                 }
             }
         }
