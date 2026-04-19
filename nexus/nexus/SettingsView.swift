@@ -269,7 +269,9 @@ struct NXGradientIconBox: View {
 struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
     @ObservedObject private var authManager = AuthenticationManager.shared
+    @ObservedObject private var subscriptionManager = SubscriptionManager.shared
     @Environment(\.colorScheme) private var cs
+    @State private var showPaywall = false
 
     // Integration toggles
     @State private var healthOn    = true
@@ -443,6 +445,7 @@ struct SettingsView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: DS.vGap) {
                         profileSection.slideIn(delay: 0.10)
+                        subscriptionBanner.slideIn(delay: 0.12)
                         integrationsCarousel.slideIn(delay: 0.15)
                         preferencesSection.slideIn(delay: 0.20)
                         securitySection.slideIn(delay: 0.25)
@@ -541,6 +544,9 @@ struct SettingsView: View {
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
         }
+        .sheet(isPresented: $showPaywall) {
+            PaywallView().environmentObject(appState)
+        }
         .sheet(item: $selectedAuthMethod) { kind in
             AuthMethodSheet(
                 kind: kind,
@@ -611,6 +617,190 @@ struct SettingsView: View {
     }
 
     // MARK: - Profile
+
+    // MARK: - Subscription Banner
+    //
+    // Анимированная плитка подписки между профилем и интеграциями.
+    // Для не-подписчика — промо с медленно вращающимся конус-градиентом
+    // по обводке + лёгкий shimmer-sweep по поверхности.
+    // Для подписчика — compact-режим с зелёной галочкой и планом.
+
+    private var subscriptionBanner: some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            showPaywall = true
+        } label: {
+            if subscriptionManager.isSubscribed {
+                subscribedCard
+            } else {
+                promoCard
+            }
+        }
+        .buttonStyle(PressableButtonStyle())
+    }
+
+    /// Не-подписчик: яркое промо с анимированным градиентом.
+    private var promoCard: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { ctx in
+            let t = ctx.date.timeIntervalSinceReferenceDate
+            let angle = Angle(degrees: (t * 28).truncatingRemainder(dividingBy: 360))
+            let shimmerX = CGFloat(sin(t * 0.9)) // -1..1, медленно ходит туда-сюда
+
+            ZStack {
+                // Основа: тёмное gradient-glass
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: cs == .dark
+                                ? [Color(red:0.06, green:0.07, blue:0.12),
+                                   Color(red:0.10, green:0.08, blue:0.18)]
+                                : [Color.white, Color(red:0.96, green:0.97, blue:1.0)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+
+                // Shimmer-полоса, скользит по диагонали
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            stops: [
+                                .init(color: .clear, location: 0.0),
+                                .init(color: .white.opacity(cs == .dark ? 0.10 : 0.35), location: 0.5),
+                                .init(color: .clear, location: 1.0),
+                            ],
+                            startPoint: UnitPoint(x: shimmerX - 0.3, y: 0),
+                            endPoint:   UnitPoint(x: shimmerX + 0.3, y: 1)
+                        )
+                    )
+                    .blendMode(.plusLighter)
+
+                // Контент поверх
+                promoContent
+
+                // Анимированная conic-обводка
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .strokeBorder(
+                        AngularGradient(
+                            gradient: Gradient(colors: [
+                                Color(red: 0.0, green: 0.48, blue: 1.0),   // blue
+                                Color(red: 0.55, green: 0.25, blue: 0.95), // purple
+                                Color(red: 0.95, green: 0.35, blue: 0.65), // pink
+                                Color(red: 1.0, green: 0.65, blue: 0.30),  // orange
+                                Color(red: 0.0, green: 0.48, blue: 1.0),   // back to blue
+                            ]),
+                            center: .center,
+                            angle: angle
+                        ),
+                        lineWidth: 1.5
+                    )
+            }
+            .frame(height: 108)
+        }
+    }
+
+    private var promoContent: some View {
+        HStack(spacing: 14) {
+            // Иконка
+            ZStack {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.55, green: 0.25, blue: 0.95),
+                                Color(red: 0.0, green: 0.48, blue: 1.0),
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 52, height: 52)
+                    .shadow(color: Color(red: 0.55, green: 0.25, blue: 0.95).opacity(0.5), radius: 10, y: 4)
+                Image(systemName: "sparkles")
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(.white)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Text("Nexus Pro")
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .foregroundStyle(fg)
+                    Text("NEW")
+                        .font(.system(size: 9, weight: .heavy))
+                        .kerning(0.5)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 5).padding(.vertical, 1)
+                        .background(Color(red:0.95,green:0.35,blue:0.65), in: Capsule())
+                }
+                Text("Все агенты, безлимитный чат, приоритет")
+                    .font(.system(size: 12))
+                    .foregroundStyle(fg.opacity(0.6))
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+            }
+
+            Spacer()
+
+            // CTA-стрелка в gradient-круге
+            Image(systemName: "arrow.right")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: 34, height: 34)
+                .background(
+                    Circle().fill(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.0, green: 0.48, blue: 1.0),
+                                Color(red: 0.55, green: 0.25, blue: 0.95),
+                            ],
+                            startPoint: .leading, endPoint: .trailing
+                        )
+                    )
+                )
+        }
+        .padding(.horizontal, 16)
+    }
+
+    /// Подписчик: компактный плиточный статус с зелёной галочкой.
+    private var subscribedCard: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.green, Color(red:0.0,green:0.65,blue:0.35)],
+                            startPoint: .topLeading, endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 44, height: 44)
+                    .shadow(color: .green.opacity(0.4), radius: 6, y: 3)
+                Image(systemName: "checkmark")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(.white)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text("Nexus Pro").font(.system(size: 16, weight: .semibold, design: .rounded)).foregroundStyle(fg)
+                    Text("активна").font(.system(size: 12)).foregroundStyle(.green)
+                }
+                Text("План: \(subscriptionManager.currentPlan.displayName)")
+                    .font(.system(size: 11))
+                    .foregroundStyle(fg.opacity(0.5))
+            }
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(fg.opacity(0.3))
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18)
+                .strokeBorder(Color.green.opacity(0.25), lineWidth: 1)
+        )
+    }
 
     private var profileSection: some View {
         Button { showProfileEdit = true } label: {
