@@ -276,15 +276,33 @@ struct ProfileView: View {
 
     // MARK: - Sections
 
+    // MARK: - Palette for row icons
+
+    private var cBlue:   Color { Color(red: 0.00, green: 0.48, blue: 1.00) }
+    private var cCyan:   Color { Color(red: 0.20, green: 0.75, blue: 0.88) }
+    private var cGreen:  Color { Color(red: 0.22, green: 0.72, blue: 0.35) }
+    private var cOrange: Color { Color(red: 0.97, green: 0.58, blue: 0.14) }
+    private var cRed:    Color { Color(red: 0.95, green: 0.30, blue: 0.34) }
+    private var cPink:   Color { Color(red: 0.98, green: 0.40, blue: 0.60) }
+    private var cPurple: Color { Color(red: 0.55, green: 0.25, blue: 0.95) }
+    private var cIndigo: Color { Color(red: 0.37, green: 0.36, blue: 0.90) }
+    private var cTeal:   Color { Color(red: 0.15, green: 0.65, blue: 0.65) }
+    private var cBrown:  Color { Color(red: 0.60, green: 0.45, blue: 0.35) }
+    private var cGold:   Color { Color(red: 0.95, green: 0.75, blue: 0.10) }
+
     private var nameSection: some View {
         glassSection(title: "ИМЯ") {
-            ProfileField("Имя", text: $firstName, fg: fg)
+            ProfileField("Имя", text: $firstName, fg: fg,
+                         icon: "person.fill", iconColor: cBlue)
             divider
-            ProfileField("Отчество", text: $middleName, placeholder: "Введите", fg: fg)
+            ProfileField("Отчество", text: $middleName, placeholder: "Введите", fg: fg,
+                         icon: "person.2.fill", iconColor: cPurple)
             divider
-            ProfileField("Фамилия", text: $lastName, fg: fg)
+            ProfileField("Фамилия", text: $lastName, fg: fg,
+                         icon: "person.crop.rectangle.fill", iconColor: cTeal)
             divider
-            ProfileField("Username", text: $username, fg: fg)
+            ProfileField("Username", text: $username, fg: fg,
+                         icon: "at", iconColor: cOrange)
         }
     }
 
@@ -296,7 +314,9 @@ struct ProfileView: View {
                 range: 100...250,
                 unit: "см",
                 fg: fg,
-                accent: accent1
+                accent: accent1,
+                icon: "ruler.fill",
+                iconColor: cGreen
             )
             divider
             RulerPickerRow(
@@ -305,16 +325,20 @@ struct ProfileView: View {
                 range: 30...300,
                 unit: "кг",
                 fg: fg,
-                accent: accent1
+                accent: accent1,
+                icon: "scalemass.fill",
+                iconColor: cPink
             )
             divider
-            menuRow(label: "Пол", value: gender, options: genders) { gender = $0 }
+            menuRow(label: "Пол", value: gender, options: genders,
+                    icon: "figure.stand", iconColor: cIndigo) { gender = $0 }
             divider
-            HStack {
+            HStack(spacing: 12) {
+                NXIconBox(icon: "birthday.cake.fill", bg: cRed, size: 28, iconSize: 14)
                 Text("Дата рождения")
                     .font(.system(size: bodySz))
                     .foregroundStyle(fg)
-                Spacer()
+                Spacer(minLength: 4)
                 DatePicker("", selection: $birthDate, displayedComponents: .date)
                     .labelsHidden()
                     .tint(accent1)
@@ -325,49 +349,60 @@ struct ProfileView: View {
 
     private var originSection: some View {
         glassSection(title: "ПРОИСХОЖДЕНИЕ") {
-            menuRow(label: "Раса", value: race, options: races) { race = $0 }
+            menuRow(label: "Раса", value: race, options: races,
+                    icon: "globe.europe.africa.fill", iconColor: cBlue) { race = $0 }
             divider
-            menuRow(label: "Этнос / Национальность", value: ethnicity, options: ethnicities) { ethnicity = $0 }
+            menuRow(label: "Этнос / Национальность", value: ethnicity, options: ethnicities,
+                    icon: "flag.fill", iconColor: cRed) { ethnicity = $0 }
         }
     }
 
     private var lifestyleSection: some View {
         glassSection(title: "ОБРАЗ ЖИЗНИ") {
             menuRow(label: "Тип питания", value: dietType, options: diets,
+                    icon: "leaf.fill", iconColor: cGreen,
                     valueMaxWidth: 200) { dietType = $0 }
             divider
             menuRow(label: "Семейное положение", value: maritalStatus, options: maritalOpts,
+                    icon: "heart.fill", iconColor: cPink,
                     valueMaxWidth: 160) { maritalStatus = $0 }
         }
     }
 
     private var locationSection: some View {
         glassSection(title: "МЕСТОПОЛОЖЕНИЕ") {
-            menuRow(label: "Страна", value: country, options: countries) { country = $0 }
+            menuRow(label: "Страна", value: country, options: countries,
+                    icon: "globe", iconColor: cCyan) { country = $0 }
             divider
-            ProfileField("Город", text: $city, fg: fg)
+            ProfileField("Город", text: $city, fg: fg,
+                         icon: "building.2.fill", iconColor: cOrange)
         }
     }
 
     private var bioSection: some View {
         glassSection(title: "О СЕБЕ") {
-            ZStack(alignment: .topLeading) {
-                if bio.isEmpty {
-                    Text("Биография")
-                        .foregroundStyle(fg.opacity(0.35))
+            HStack(alignment: .top, spacing: 12) {
+                NXIconBox(icon: "text.quote", bg: cPurple, size: 28, iconSize: 14)
+                    .padding(.top, 10)
+                ZStack(alignment: .topLeading) {
+                    if bio.isEmpty {
+                        Text("Биография")
+                            .foregroundStyle(fg.opacity(0.35))
+                            .font(.system(size: bodySz))
+                            .padding(.top, 14)
+                            .padding(.leading, 4)
+                            .allowsHitTesting(false)
+                    }
+                    TextEditor(text: $bio)
+                        .foregroundStyle(fg)
                         .font(.system(size: bodySz))
-                        .padding(.horizontal, hPad)
-                        .padding(.top, 14)
-                        .allowsHitTesting(false)
+                        .scrollContentBackground(.hidden)
+                        .frame(minHeight: 100, maxHeight: 160)
+                        .padding(.vertical, 6)
                 }
-                TextEditor(text: $bio)
-                    .foregroundStyle(fg)
-                    .font(.system(size: bodySz))
-                    .scrollContentBackground(.hidden)
-                    .frame(minHeight: 100, maxHeight: 160)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
             }
+            .padding(.horizontal, hPad)
+            .padding(.vertical, 6)
         }
     }
 
@@ -396,13 +431,18 @@ struct ProfileView: View {
     private func menuRow(label: String,
                          value: String,
                          options: [String],
+                         icon: String? = nil,
+                         iconColor: Color = .blue,
                          valueMaxWidth: CGFloat = 180,
                          onSelect: @escaping (String) -> Void) -> some View {
-        HStack {
+        HStack(spacing: 12) {
+            if let icon {
+                NXIconBox(icon: icon, bg: iconColor, size: 28, iconSize: 14)
+            }
             Text(label)
                 .font(.system(size: bodySz))
                 .foregroundStyle(fg)
-            Spacer()
+            Spacer(minLength: 4)
             Menu {
                 ForEach(options, id: \.self) { opt in
                     Button(opt) { onSelect(opt) }
@@ -481,22 +521,30 @@ private struct ProfileField: View {
     var placeholder: String = ""
     var prefix: String = ""
     let fg: Color
+    var icon: String? = nil
+    var iconColor: Color = .blue
 
     init(_ label: String, text: Binding<String>,
-         placeholder: String = "", prefix: String = "", fg: Color) {
+         placeholder: String = "", prefix: String = "", fg: Color,
+         icon: String? = nil, iconColor: Color = .blue) {
         self.label = label
         self._text = text
         self.placeholder = placeholder
         self.prefix = prefix
         self.fg = fg
+        self.icon = icon
+        self.iconColor = iconColor
     }
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 12) {
+            if let icon {
+                NXIconBox(icon: icon, bg: iconColor, size: 28, iconSize: 14)
+            }
             Text(label)
                 .font(.system(size: 15))
                 .foregroundStyle(fg)
-            Spacer()
+            Spacer(minLength: 4)
             if !prefix.isEmpty {
                 Text(prefix)
                     .foregroundStyle(fg.opacity(0.35))
@@ -529,14 +577,19 @@ private struct RulerPickerRow: View {
     let unit: String
     let fg: Color
     let accent: Color
+    var icon: String? = nil
+    var iconColor: Color = .blue
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline) {
+            HStack(spacing: 12) {
+                if let icon {
+                    NXIconBox(icon: icon, bg: iconColor, size: 28, iconSize: 14)
+                }
                 Text(label)
                     .font(.system(size: 15))
                     .foregroundStyle(fg)
-                Spacer()
+                Spacer(minLength: 4)
                 HStack(alignment: .firstTextBaseline, spacing: 3) {
                     Text("\(value)")
                         .font(.system(size: 22, weight: .semibold, design: .rounded))
@@ -569,7 +622,21 @@ private struct Ruler: View {
     private let tickMidH: CGFloat = 16
     private let tickMajorH: CGFloat = 22
 
-    @State private var scrollValue: Int?
+    /// Адаптер-байндинг для scrollPosition. Прокси между
+    /// `@Binding var value: Int` и ожидаемым `Binding<Int?>`.
+    /// Чисто прокидывает новое значение наверх и триггерит haptic —
+    /// без промежуточного @State, который раньше вызывал «отбрасывание».
+    private var positionBinding: Binding<Int?> {
+        Binding(
+            get: { value },
+            set: { new in
+                if let n = new, n != value {
+                    value = n
+                    UISelectionFeedbackGenerator().selectionChanged()
+                }
+            }
+        )
+    }
 
     var body: some View {
         GeometryReader { geo in
@@ -586,8 +653,8 @@ private struct Ruler: View {
                 .padding(.horizontal, centerPad)
                 .padding(.vertical, 8)
             }
-            .scrollTargetBehavior(.viewAligned)
-            .scrollPosition(id: $scrollValue, anchor: .center)
+            .scrollTargetBehavior(.viewAligned(limitBehavior: .never))
+            .scrollPosition(id: positionBinding, anchor: .center)
             .overlay(alignment: .center) {
                 // Центральный индикатор — треугольник сверху + вертикальная линия.
                 VStack(spacing: 2) {
@@ -613,17 +680,6 @@ private struct Ruler: View {
                     startPoint: .leading, endPoint: .trailing
                 )
             )
-            .onAppear { scrollValue = value }
-            .onChange(of: scrollValue) { _, new in
-                guard let n = new, n != value else { return }
-                value = n
-                UISelectionFeedbackGenerator().selectionChanged()
-            }
-            .onChange(of: value) { _, new in
-                // Внешнее изменение value (например, загрузка из профиля) —
-                // подгоняем скролл.
-                if scrollValue != new { scrollValue = new }
-            }
         }
         .frame(height: 56)
     }
