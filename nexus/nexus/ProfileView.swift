@@ -12,7 +12,6 @@ import PhotosUI
 //  • Аватар близко к заголовку + кнопка удалить фото.
 //  • Рост/вес — горизонтальный ruler picker с rubber-banding.
 
-@MainActor
 struct ProfileView: View {
     @EnvironmentObject private var appState: AppState
     @Environment(\.dismiss) private var dismiss
@@ -602,8 +601,8 @@ private struct Ruler: View {
                 .shadow(color: accent.opacity(0.4), radius: 4, y: 1)
                 .allowsHitTesting(false)
             }
-            .overlay(
-                // Плавное затухание по краям, чтобы крайние тики не выглядели обрезанными.
+            // Плавное затухание по краям, чтобы крайние тики не выглядели обрезанными.
+            .mask(
                 LinearGradient(
                     stops: [
                         .init(color: .black.opacity(0),   location: 0.00),
@@ -613,9 +612,7 @@ private struct Ruler: View {
                     ],
                     startPoint: .leading, endPoint: .trailing
                 )
-                .blendMode(.destinationIn)
             )
-            .compositingGroup()
             .onAppear { scrollValue = value }
             .onChange(of: scrollValue) { _, new in
                 guard let n = new, n != value else { return }
