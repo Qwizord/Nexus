@@ -1286,24 +1286,12 @@ struct SettingsView: View {
             }
             NXDivider()
 
-            // Mac version (disabled) — в тёмной теме выглядит заметно неактивно.
-            HStack(spacing: 14) {
-                NXIconBox(icon: "display", bg: (cs == .dark ? Color.white.opacity(0.06) : Color.gray.opacity(0.22)))
-                Text("Mac версия")
-                    .font(.system(size: DS.bodySz))
-                    .foregroundStyle(fg.opacity(cs == .dark ? 0.25 : 0.35))
-                Spacer()
-                Text("Скоро")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(cs == .dark ? Color.white.opacity(0.45) : .white)
-                    .padding(.horizontal, 9).padding(.vertical, 4)
-                    .background((cs == .dark ? Color.white.opacity(0.08) : Color.gray.opacity(0.4)),
-                                in: Capsule())
-            }
-            .padding(.horizontal, DS.hPad)
-            .padding(.vertical, DS.rowV)
-            .opacity(cs == .dark ? 0.55 : 1.0)
-            .allowsHitTesting(false)
+            // iPadOS version (disabled, coming soon)
+            comingSoonRow(icon: "ipad", title: "iPadOS версия")
+            NXDivider()
+
+            // macOS version (disabled, coming soon)
+            comingSoonRow(icon: "desktopcomputer", title: "macOS версия")
 
             NXDivider()
             actionRow(icon: "questionmark.circle.fill", bg: DS.accent1.opacity(0.9), title: "FAQ") {
@@ -1357,6 +1345,29 @@ struct SettingsView: View {
             }
             .buttonStyle(PressableButtonStyle())
         }
+    }
+
+    /// Строка-заглушка для платформ, которые пока не готовы (iPadOS, macOS).
+    /// Визуально блекнет в тёмной теме и не принимает тапы.
+    @ViewBuilder
+    private func comingSoonRow(icon: String, title: String) -> some View {
+        HStack(spacing: 14) {
+            NXIconBox(icon: icon, bg: (cs == .dark ? Color.white.opacity(0.06) : Color.gray.opacity(0.22)))
+            Text(title)
+                .font(.system(size: DS.bodySz))
+                .foregroundStyle(fg.opacity(cs == .dark ? 0.25 : 0.35))
+            Spacer()
+            Text("Скоро")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(cs == .dark ? Color.white.opacity(0.45) : .white)
+                .padding(.horizontal, 9).padding(.vertical, 4)
+                .background((cs == .dark ? Color.white.opacity(0.08) : Color.gray.opacity(0.4)),
+                            in: Capsule())
+        }
+        .padding(.horizontal, DS.hPad)
+        .padding(.vertical, DS.rowV)
+        .opacity(cs == .dark ? 0.55 : 1.0)
+        .allowsHitTesting(false)
     }
 
     @ViewBuilder
