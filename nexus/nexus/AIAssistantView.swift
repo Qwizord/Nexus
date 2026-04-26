@@ -4,29 +4,59 @@ import Combine
 struct AIAssistantView: View {
     @StateObject private var vm = AIViewModel()
     @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @Environment(\.colorScheme) private var colorScheme
     @State private var inputText = ""
     @FocusState private var inputFocused: Bool
     @State private var showInfoSheet = false
-    @State private var infoButtonPressed = false
-    @State private var historyButtonPressed = false
     @State private var sendButtonPressed = false
     @State private var clearButtonPressed = false
     @State private var sparkleTap = false
     @State private var showHistorySheet = false
-    
+
+    private var fg: Color {
+        colorScheme == .dark ? .white : Color(red: 0.11, green: 0.11, blue: 0.14)
+    }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            header
-                .padding(.horizontal, 16)
-                .padding(.top, verticalSizeClass == .compact ? 25 : 25)
-                .padding(.bottom, 12)
+        // Тот же паттерн, что в Settings: NavigationStack + крупный native
+        // заголовок (auto-collapse при скролле) + два toolbar-кнопки справа.
+        NavigationStack {
+            aiContent
+                .navigationTitle(L("ai.title"))
+                .navigationBarTitleDisplayMode(.large)
+                .toolbarBackground(.automatic, for: .navigationBar)
+        }
+        .overlay(alignment: .topTrailing) {
+            HStack(spacing: 8) {
+                Button { showHistorySheet = true } label: {
+                    Image(systemName: "clock")
+                        .font(.system(size: 19, weight: .semibold))
+                        .foregroundStyle(fg)
+                        .frame(width: 44, height: 44)
+                        .applyGlassCircle()
+                }
+                .buttonStyle(.plain)
+                Button { showInfoSheet = true } label: {
+                    Image(systemName: "questionmark")
+                        .font(.system(size: 19, weight: .semibold))
+                        .foregroundStyle(fg)
+                        .frame(width: 44, height: 44)
+                        .applyGlassCircle()
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.trailing, 16)
+            .padding(.top, 8)
+        }
+    }
 
+    private var aiContent: some View {
+        VStack(spacing: 0) {
             // Agent mode banner
             if vm.isAgentMode {
                 agentModeBanner
                     .padding(.horizontal, 16)
+                    .padding(.top, 8)
                     .padding(.bottom, 8)
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
@@ -108,76 +138,6 @@ struct AIAssistantView: View {
         }
         .sheet(isPresented: $showHistorySheet) {
             historySheet
-        }
-    }
-
-    // MARK: - Header
-
-    var header: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(L("ai.title"))
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-                if vm.isAgentMode, let agent = vm.detectedAgent {
-                    Text("\(L("ai.agent")) \(agent.rawValue)")
-                        .font(.system(size: 13))
-                        .foregroundStyle(.white.opacity(0.5))
-                        .transition(.opacity)
-                }
-            }
-            Spacer()
-            headerButtons
-        }
-    }
-
-    @ViewBuilder
-    var headerButtons: some View {
-        if #available(iOS 26.0, *) {
-            GlassEffectContainer {
-                headerButtonsContent
-            }
-        } else {
-            headerButtonsContent
-        }
-    }
-
-    @ViewBuilder
-    var headerButtonsContent: some View {
-        HStack(spacing: 10) {
-            Button {
-                showHistorySheet = true
-            } label: {
-                Image(systemName: "clock")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 36, height: 36)
-                    .applyGlassCircle()
-                    .scaleEffect(historyButtonPressed ? 0.95 : 1.0)
-            }
-            .buttonStyle(.plain)
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { _ in withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) { historyButtonPressed = true } }
-                    .onEnded { _ in withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) { historyButtonPressed = false } }
-            )
-
-            Button {
-                showInfoSheet = true
-            } label: {
-                Image(systemName: "questionmark.circle")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 36, height: 36)
-                    .applyGlassCircle()
-                    .scaleEffect(infoButtonPressed ? 0.95 : 1.0)
-            }
-            .buttonStyle(.plain)
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { _ in withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) { infoButtonPressed = true } }
-                    .onEnded { _ in withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) { infoButtonPressed = false } }
-            )
         }
     }
 

@@ -707,46 +707,60 @@ private func flameHTML(isLight: Bool) -> String {
     )
 }
 
-// MARK: - Dual WKWebView (оба фона загружаются сразу, переключение через alpha)
+// MARK: - Single WKWebView с ленивым переключением темы
+//
+// Раньше было два WKWebView (dark + light), оба постоянно крутили WebGL-шейдер
+// — это грело устройство и жрало батарею даже когда один из них невидим.
+// Теперь один WKWebView: при смене темы перезагружаем HTML. GPU-нагрузка вдвое
+// меньше. Плюс слушаем scenePhase и полностью гасим WebGL в бэкграунде.
 
 struct DualFlameWebView: UIViewRepresentable {
     let isLight: Bool
+    let isActive: Bool
 
     class Coordinator {
-        var darkWV: WKWebView?
-        var lightWV: WKWebView?
+        var wv: WKWebView?
         var isLight: Bool
-        init(isLight: Bool) { self.isLight = isLight }
+        var isActive: Bool
+        init(isLight: Bool, isActive: Bool) {
+            self.isLight = isLight
+            self.isActive = isActive
+        }
     }
 
-    func makeCoordinator() -> Coordinator { Coordinator(isLight: isLight) }
+    func makeCoordinator() -> Coordinator {
+        Coordinator(isLight: isLight, isActive: isActive)
+    }
 
     func makeUIView(context: Context) -> UIView {
         let container = UIView()
         container.backgroundColor = .clear
 
-        let dark  = buildWebView(isLight: false)
-        let light = buildWebView(isLight: true)
-        light.alpha = isLight ? 1 : 0
-        dark.alpha  = isLight ? 0 : 1
+        let wv = buildWebView(isLight: isLight)
+        wv.frame = container.bounds
+        wv.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        container.addSubview(wv)
 
-        for wv in [dark, light] {
-            wv.frame = container.bounds
-            wv.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-            container.addSubview(wv)
-        }
-
-        context.coordinator.darkWV  = dark
-        context.coordinator.lightWV = light
+        context.coordinator.wv = wv
         return container
     }
 
     func updateUIView(_ uiView: UIView, context: Context) {
-        guard context.coordinator.isLight != isLight else { return }
-        context.coordinator.isLight = isLight
-        UIView.animate(withDuration: 0.4) {
-            context.coordinator.darkWV?.alpha  = self.isLight ? 0 : 1
-            context.coordinator.lightWV?.alpha = self.isLight ? 1 : 0
+        // 1) Сменилась тема — перезагружаем HTML (не держим второй webview в памяти).
+        if context.coordinator.isLight != isLight {
+            context.coordinator.isLight = isLight
+            context.coordinator.wv?.loadHTMLString(flameHTML(isLight: isLight), baseURL: nil)
+        }
+        // 2) Приложение ушло в бэкграунд — дёргаем visibilitychange, чтобы WebKit
+        //    дросселировал requestAnimationFrame (webgl-цикл реально встаёт).
+        if context.coordinator.isActive != isActive {
+            context.coordinator.isActive = isActive
+            let visibility = isActive ? "visible" : "hidden"
+            context.coordinator.wv?.evaluateJavaScript("""
+                Object.defineProperty(document, 'visibilityState', { get: () => '\(visibility)', configurable: true });
+                Object.defineProperty(document, 'hidden', { get: () => \(isActive ? "false" : "true"), configurable: true });
+                document.dispatchEvent(new Event('visibilitychange'));
+            """)
         }
     }
 
@@ -790,19 +804,17 @@ private enum NoiseGen {
 }
 
 private struct GrainLayer: View {
-    private static let frames: [UIImage] = (0..<4).map { _ in
-        NoiseGen.makeTile(size: CGSize(width: 200, height: 200))
-    }
+    // Раньше было 4 кадра с TimelineView @ 24fps → постоянная перерисовка всего
+    // полноэкранного оверлея. Теперь — один статичный кадр. На фоне движущегося
+    // WebGL-пламени отсутствие анимации шума глазу не заметно, зато CPU свободен.
+    private static let frame: UIImage = NoiseGen.makeTile(size: CGSize(width: 200, height: 200))
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 24.0)) { ctx in
-            let i = Int(ctx.date.timeIntervalSinceReferenceDate * 24) % 4
-            Image(uiImage: Self.frames[i])
-                .resizable(resizingMode: .tile)
-                .opacity(0.15)
-                .blendMode(.overlay)
-                .ignoresSafeArea()
-                .allowsHitTesting(false)
-        }
+        Image(uiImage: Self.frame)
+            .resizable(resizingMode: .tile)
+            .opacity(0.15)
+            .blendMode(.overlay)
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
     }
 }
 
@@ -810,13 +822,17 @@ private struct GrainLayer: View {
 
 struct FlameBackground: View {
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.scenePhase) private var scenePhase
     var forceScheme: ColorScheme? = nil
 
     var body: some View {
         let scheme = forceScheme ?? colorScheme
         ZStack {
-            DualFlameWebView(isLight: scheme == .light)
-                .ignoresSafeArea()
+            DualFlameWebView(
+                isLight: scheme == .light,
+                isActive: scenePhase == .active
+            )
+            .ignoresSafeArea()
             GrainLayer()
         }
     }

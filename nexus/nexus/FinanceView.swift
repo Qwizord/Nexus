@@ -197,91 +197,110 @@ struct FinanceView: View {
     @State private var showAddTx     = false
     @State private var showAddGoal   = false
     @State private var showBudgetEdit: FinBudgetCategory? = nil
-    @State private var showChart     = false
-    @State private var showAllTx     = false
+    @State private var showChart          = false
+    @State private var showAllTx          = false
+    @State private var showFinanceSettings = false
+    @Environment(\.colorScheme) private var colorScheme
 
     private let blue = Color(red: 0, green: 0.48, blue: 1)
+    private var fg: Color {
+        colorScheme == .dark ? .white : Color(red: 0.11, green: 0.11, blue: 0.14)
+    }
 
     var body: some View {
-        ZStack(alignment: .bottomTrailing) {
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 20) {
+        // Тот же паттерн, что в Settings: NavigationStack + крупный native
+        // заголовок (auto-collapse при скролле) + два toolbar-кнопки справа.
+        NavigationStack {
+            ZStack(alignment: .bottomTrailing) {
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 20) {
+                        // Месяц-перелистыватель остаётся внутри контента
+                        // (это тематический элемент Finance, не header).
+                        monthSwitcher
 
-                    // ── Header ──
-                    headerView
+                        balanceCard
+                        budgetRuleCard
+                        chartCard
+                        budgetSection
+                        goalsSection
+                        transactionsSection
 
-                    // ── Balance Card ──
-                    balanceCard
-
-                    // ── 50/30/20 Rule ──
-                    budgetRuleCard
-
-                    // ── 6-Month Chart ──
-                    chartCard
-
-                    // ── Budget Categories ──
-                    budgetSection
-
-                    // ── Goals ──
-                    goalsSection
-
-                    // ── Transactions ──
-                    transactionsSection
-
-                    Spacer(minLength: 100)
+                        Spacer(minLength: 100)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 25)
-            }
 
-            // FAB
-            Button { showAddTx = true } label: {
-                Image(systemName: "plus")
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 58, height: 58)
-                    .background(blue, in: Circle())
-                    .shadow(color: blue.opacity(0.5), radius: 12, y: 4)
+                // FAB
+                Button { showAddTx = true } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 58, height: 58)
+                        .background(blue, in: Circle())
+                        .shadow(color: blue.opacity(0.5), radius: 12, y: 4)
+                }
+                .padding(.trailing, 20)
+                .padding(.bottom, 100)
             }
-            .padding(.trailing, 20)
-            .padding(.bottom, 100)
+            .navigationTitle("Финансы")
+            .navigationBarTitleDisplayMode(.large)
+            .toolbarBackground(.automatic, for: .navigationBar)
+        }
+        .overlay(alignment: .topTrailing) {
+            HStack(spacing: 8) {
+                Button { showChart = true } label: {
+                    Image(systemName: "chart.xyaxis.line")
+                        .font(.system(size: 19, weight: .semibold))
+                        .foregroundStyle(fg)
+                        .frame(width: 44, height: 44)
+                        .applyGlassCircle()
+                }
+                .buttonStyle(.plain)
+                Button { showFinanceSettings = true } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 19, weight: .semibold))
+                        .foregroundStyle(fg)
+                        .frame(width: 44, height: 44)
+                        .applyGlassCircle()
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.top, 8)
+            .padding(.trailing, 16)
         }
         .sheet(isPresented: $showAddTx)   { AddTransactionSheet(vm: vm) }
         .sheet(isPresented: $showAddGoal) { AddGoalSheet(vm: vm) }
         .sheet(item: $showBudgetEdit)     { cat in BudgetEditSheet(vm: vm, category: cat) }
+        .sheet(isPresented: $showFinanceSettings) {
+            FinanceSettingsSheet()
+        }
     }
 
-    // MARK: Header
-    private var headerView: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Финансы")
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-                    Text(vm.displayMonth)
-                        .font(.system(size: 14))
-                        .foregroundStyle(.white.opacity(0.4))
+    /// Перелистыватель месяца. Раньше был частью header'а; теперь — отдельная
+    /// плашка под navigationTitle, чтобы native-заголовок мог сворачиваться.
+    private var monthSwitcher: some View {
+        HStack {
+            Text(vm.displayMonth)
+                .font(.system(size: 14))
+                .foregroundStyle(fg.opacity(0.55))
+            Spacer()
+            HStack(spacing: 10) {
+                Button { vm.prevMonth() } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(fg.opacity(0.7))
+                        .frame(width: 36, height: 36)
+                        .background(.ultraThinMaterial, in: Circle())
                 }
-                Spacer()
-                HStack(spacing: 10) {
-                    Button { vm.prevMonth() } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.7))
-                            .frame(width: 36, height: 36)
-                            .background(.ultraThinMaterial, in: Circle())
-                    }
-                    Button { if !vm.isCurrentMonth { vm.nextMonth() } } label: {
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(vm.isCurrentMonth ? .white.opacity(0.2) : .white.opacity(0.7))
-                            .frame(width: 36, height: 36)
-                            .background(.ultraThinMaterial, in: Circle())
-                    }
+                Button { if !vm.isCurrentMonth { vm.nextMonth() } } label: {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(vm.isCurrentMonth ? fg.opacity(0.2) : fg.opacity(0.7))
+                        .frame(width: 36, height: 36)
+                        .background(.ultraThinMaterial, in: Circle())
                 }
             }
-            .padding(.bottom, 8)
         }
     }
 
@@ -1084,7 +1103,7 @@ struct BudgetEditSheet: View {
                     RoundedRectangle(cornerRadius: 16).fill(category.uiColor.opacity(0.18)).frame(width: 64, height: 64)
                     Image(systemName: category.icon).font(.system(size: 26)).foregroundStyle(category.uiColor)
                 }
-                .padding(.top, 20)
+                .padding(.top, 8)
 
                 Text(category.name)
                     .font(.system(size: 20, weight: .semibold)).foregroundStyle(.white)
@@ -1134,5 +1153,85 @@ struct BudgetEditSheet: View {
             }
         }
         .onAppear { budgetStr = category.budget > 0 ? String(Int(category.budget)) : "" }
+    }
+}
+
+// MARK: - Finance Settings Sheet
+
+struct FinanceSettingsSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var fg: Color {
+        colorScheme == .dark ? .white : Color(red: 0.11, green: 0.11, blue: 0.14)
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 20) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("ПАРАМЕТРЫ")
+                            .font(.system(size: 11, weight: .semibold))
+                            .kerning(0.5)
+                            .textCase(.uppercase)
+                            .foregroundStyle(fg.opacity(0.35))
+                            .padding(.leading, 4)
+                        VStack(spacing: 0) {
+                            HStack {
+                                Text("Валюта")
+                                    .font(.system(size: 15))
+                                    .foregroundStyle(fg)
+                                Spacer()
+                                Text("RUB (₽)")
+                                    .font(.system(size: 15))
+                                    .foregroundStyle(fg.opacity(0.45))
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 14)
+                            Divider().padding(.leading, 16)
+                            HStack {
+                                Text("Начало месяца")
+                                    .font(.system(size: 15))
+                                    .foregroundStyle(fg)
+                                Spacer()
+                                Text("1-е число")
+                                    .font(.system(size: 15))
+                                    .foregroundStyle(fg.opacity(0.45))
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 14)
+                            Divider().padding(.leading, 16)
+                            HStack {
+                                Text("Бюджетное правило")
+                                    .font(.system(size: 15))
+                                    .foregroundStyle(fg)
+                                Spacer()
+                                Text("50/30/20")
+                                    .font(.system(size: 15))
+                                    .foregroundStyle(fg.opacity(0.45))
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 14)
+                        }
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+                        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(fg.opacity(0.08), lineWidth: 0.5))
+                    }
+                }
+                .padding(16)
+                .padding(.top, 8)
+            }
+            .navigationTitle("Настройки финансов")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Готово") { dismiss() }
+                        .font(.system(size: 16, weight: .semibold))
+                        .tint(Color(red: 0, green: 0.48, blue: 1))
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
     }
 }

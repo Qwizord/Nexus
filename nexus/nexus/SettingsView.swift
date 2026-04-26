@@ -3,6 +3,8 @@ import PhotosUI
 import UIKit
 import LocalAuthentication
 import UserNotifications
+import StoreKit
+import CryptoKit
 #if canImport(FirebaseAuth)
 import FirebaseAuth
 #endif
@@ -58,6 +60,18 @@ struct PressableButtonStyle: ButtonStyle {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
             .animation(.easeInOut(duration: DS.tapDur), value: configuration.isPressed)
+    }
+}
+
+/// Стиль для toolbar-кнопок × / ✓: нативный Button → iOS сам даёт круглую
+/// glass-обёртку (не овал!) и тап-таргет ≥ 44pt. Просто press-scale.
+/// (Раньше был `simultaneousGesture(DragGesture)` «поглотитель» — он съедал
+/// Button.tap на iOS 26. Убрал: тулбар и так вне ScrollView, скролл не страдает.)
+struct ToolbarCloseStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.88 : 1.0)
+            .animation(.easeInOut(duration: 0.18), value: configuration.isPressed)
     }
 }
 
@@ -268,10 +282,18 @@ struct NXGradientIconBox: View {
 // MARK: - Settings View
 
 struct SettingsView: View {
+    /// Инкрементируется из MainTabView при повторном тапе на таб «Настройки».
+    /// ScrollViewReader реагирует на изменение и прокручивает список наверх,
+    /// возвращая большой навигационный заголовок.
+    var scrollToTopTrigger: Int = 0
+
     @EnvironmentObject private var appState: AppState
     @ObservedObject private var authManager = AuthenticationManager.shared
     @ObservedObject private var subscriptionManager = SubscriptionManager.shared
     @Environment(\.colorScheme) private var cs
+    /// Нативный системный промпт «Оцените приложение» (SKStoreReviewController под капотом).
+    /// Показывается внутри приложения без перехода в App Store.
+    @Environment(\.requestReview) private var requestReview
     @State private var showPaywall = false
 
     // Integration toggles
@@ -285,6 +307,11 @@ struct SettingsView: View {
     // FaceID state хранится в AppSettings (через AppState) — иначе при перезапуске
     // SettingsView показывал бы «включено», но ContentView/lock-flow не знал об этом.
     @State private var faceIDSuccess = false
+    // Telegram-style flow: настоящий setup/change/disable теперь живёт в
+    // `PasscodeLockView` (push'ится из строки «Код-пароль и Face ID»).
+    // Здесь храним только тик для force-refresh `securitySection` после
+    // того, как push-страница что-то поменяла.
+    @State private var passcodeTick: Int = 0
 
     // Preferences
     @State private var selectedTheme    = AppTheme.system
@@ -444,32 +471,50 @@ struct SettingsView: View {
             ZStack {
                 bg.ignoresSafeArea()
 
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: DS.vGap) {
-                        profileSection.slideIn(delay: 0.10)
-                        subscriptionBanner.slideIn(delay: 0.12)
-                        integrationsCarousel.slideIn(delay: 0.15)
-                        preferencesSection.slideIn(delay: 0.20)
-                        securitySection.slideIn(delay: 0.25)
-                        accountSection.slideIn(delay: 0.30)
-                        supportInfoSection.slideIn(delay: 0.35)
-                        signOutSection.slideIn(delay: 0.40)
-                        bottomLinks.slideIn(delay: 0.45)
+                ScrollViewReader { proxy in
+                    ScrollView(showsIndicators: false) {
+                        VStack(spacing: DS.vGap) {
+                            // Первая карточка несёт id-якорь для scroll-to-top
+                            // при повторном тапе на таб «Настройки». Раньше тут
+                                // был отдельный Color.clear, но VStack(spacing:)
+                                // добавлял ему 20pt отступа сверху и снизу — и
+                                // заголовок «Настройки» визуально «отъезжал»
+                                // от карточки профиля.
+                            profileSection
+                                .id("nxSettingsTop")
+                                .slideIn(delay: 0.10)
+                            subscriptionBanner.slideIn(delay: 0.12)
+                            integrationsCarousel.slideIn(delay: 0.15)
+                            preferencesSection.slideIn(delay: 0.20)
+                            securitySection.slideIn(delay: 0.25)
+                            accountSection.slideIn(delay: 0.30)
+                            supportInfoSection.slideIn(delay: 0.35)
+                            signOutSection.slideIn(delay: 0.40)
+                            bottomLinks.slideIn(delay: 0.45)
 
-                        Text("Nexus version: \(appVersion)")
-                            .font(.system(size: 12))
-                            .foregroundStyle(fg.opacity(0.25))
-                            .slideIn(delay: 0.50)
+                            Text("Nexus version: \(appVersion)")
+                                .font(.system(size: 12))
+                                .foregroundStyle(fg.opacity(0.25))
+                                .slideIn(delay: 0.50)
 
-                        Spacer(minLength: 60)
+                            Spacer(minLength: 60)
+                        }
+                        .padding(.horizontal, DS.hPad)
+                        .padding(.top, 8)
                     }
-                    .padding(.horizontal, DS.hPad)
-                    .padding(.top, 8)
-                }
-                .onScrollGeometryChange(for: CGFloat.self) { geo in
-                    geo.contentOffset.y + geo.contentInsets.top
-                } action: { _, newY in
-                    scrollY = newY
+                    .onScrollGeometryChange(for: CGFloat.self) { geo in
+                        geo.contentOffset.y + geo.contentInsets.top
+                    } action: { _, newY in
+                        scrollY = newY
+                    }
+                    // Повторный тап на таб «Настройки» → плавно прокрутить наверх.
+                    // scrollToTopTrigger = 0 при init, поэтому onChange(initial: false)
+                    // чтобы не скроллить при первом рендере.
+                    .onChange(of: scrollToTopTrigger) { _, _ in
+                        withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
+                            proxy.scrollTo("nxSettingsTop", anchor: .top)
+                        }
+                    }
                 }
 
 
@@ -536,9 +581,20 @@ struct SettingsView: View {
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.hidden)
         }
+        // Sheet'ы для setup/change/disable перенесены внутрь PasscodeLockView,
+        // которая push'ится с экрана Settings. Здесь ничего не нужно.
         .sheet(isPresented: $showShareSheet) { ShareSheet(activityItems: ["Я использую Nexus!"]) }
         .sheet(isPresented: $showFeedback) {
-            FeedbackView().environmentObject(appState)
+            FeedbackView()
+                .environmentObject(appState)
+                // Один фиксированный детент 0.78 — sheet чуть ниже, чем был
+                // 0.85, и его НЕЛЬЗЯ растянуть на full-screen (только один
+                // вариант высоты).
+                .presentationDetents([.fraction(0.78)])
+                .presentationDragIndicator(.hidden)
+                // Без явного presentationBackground — iOS 26 сам отрисует
+                // нативный liquid-glass для sheet'а. Это и есть тот «блюр
+                // сверху», что был на «Поддержке».
         }
         .sheet(item: $selectedIntegration) { item in
             IntegrationDetailSheet(
@@ -646,63 +702,153 @@ struct SettingsView: View {
         .buttonStyle(PressableButtonStyle())
     }
 
-    /// Не-подписчик: яркое промо с анимированным градиентом.
+    /// Не-подписчик: премиальное промо с анимированным градиентом.
+    //
+    // Архитектура:
+    //   • Внутреннее содержимое (фон, specular, контент, обводки) кладём
+    //     в ZStack и КЛИПУЕМ через `.clipShape(RoundedRectangle)` — это
+    //     гарантирует, что никакой слой не вылезает за скруглённые края.
+    //   • Тени (цветная аура + contact) применяем СНАРУЖИ клипа — они
+    //     должны быть видны за пределами карточки, но не должны влиять
+    //     на внутренние слои.
+    //   • `.compositingGroup()` собирает всё внутреннее в один слой,
+    //     чтобы тень считалась один раз от итогового силуэта.
+    //   • Радиусы теней СТАТИЧНЫ → Core Animation кэширует блюр и каждый
+    //     кадр меняет только цвет/opacity (дёшево, без re-blur).
     private var promoCard: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { ctx in
+        TimelineView(.animation(minimumInterval: 1.0 / 120.0)) { ctx in
             let t = ctx.date.timeIntervalSinceReferenceDate
-            let angle = Angle(degrees: (t * 28).truncatingRemainder(dividingBy: 360))
-            let shimmerX = CGFloat(sin(t * 0.9)) // -1..1, медленно ходит туда-сюда
+
+            // Тайминги. Намеренно медленные — премиум = неторопливо.
+            let breath      = 0.5 + 0.5 * sin(t * 0.55)         // ~11 сек цикл
+            let borderAngle = Angle(degrees: (t * 24)
+                .truncatingRemainder(dividingBy: 360))           // ~15 сек оборот
+
+            // Тёплый hue для основной ауры (violet → magenta → coral).
+            let hueA = (0.85 + 0.13 * sin(t * 0.18))
+                .truncatingRemainder(dividingBy: 1.0)
+            // Контр-фаза для второй ауры (cool → indigo → blue).
+            let hueB = (0.62 + 0.08 * sin(t * 0.18 + .pi))
+                .truncatingRemainder(dividingBy: 1.0)
+
+            // Specular — центр плавает диагонально, имитируя живой блик.
+            let specX = 0.22 + 0.10 * sin(t * 0.33)
+            let specY = 0.18 + 0.07 * sin(t * 0.22 + 1.1)
+
+            // Sweep — горизонтальная световая полоса, проходит каждые ~7с.
+            let sweepX = (sin(t * 0.45) + 1) * 0.5               // 0..1
+            let sweepWidth: CGFloat = 0.18
+
+            // Корнер-радиус выносим, чтобы клип и обводки совпадали 1:1.
+            let radius: CGFloat = 22
+            let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
 
             ZStack {
-                // Основа: тёмное gradient-glass
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                // 1. База
+                Rectangle()
                     .fill(
                         LinearGradient(
                             colors: cs == .dark
-                                ? [Color(red:0.06, green:0.07, blue:0.12),
-                                   Color(red:0.10, green:0.08, blue:0.18)]
-                                : [Color.white, Color(red:0.96, green:0.97, blue:1.0)],
+                                ? [Color(red: 0.07, green: 0.06, blue: 0.11),
+                                   Color(red: 0.11, green: 0.07, blue: 0.17)]
+                                : [Color.white,
+                                   Color(red: 0.97, green: 0.96, blue: 0.99)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
 
-                // Shimmer-полоса, скользит по диагонали
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                // 2. Movable specular (highlight).
+                Rectangle()
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                Color.white.opacity(cs == .dark ? 0.16 : 0.32),
+                                Color.clear
+                            ],
+                            center: UnitPoint(x: specX, y: specY),
+                            startRadius: 8,
+                            endRadius: 200
+                        )
+                    )
+                    .allowsHitTesting(false)
+
+                // 3. Sweep — диагональная световая полоса, бесконечно
+                //     ползёт слева направо. Узкая, мягкая.
+                Rectangle()
                     .fill(
                         LinearGradient(
                             stops: [
-                                .init(color: .clear, location: 0.0),
-                                .init(color: .white.opacity(cs == .dark ? 0.10 : 0.35), location: 0.5),
-                                .init(color: .clear, location: 1.0),
+                                .init(color: .clear, location: max(0, sweepX - sweepWidth)),
+                                .init(color: Color.white.opacity(cs == .dark ? 0.10 : 0.22), location: sweepX),
+                                .init(color: .clear, location: min(1, sweepX + sweepWidth)),
                             ],
-                            startPoint: UnitPoint(x: shimmerX - 0.3, y: 0),
-                            endPoint:   UnitPoint(x: shimmerX + 0.3, y: 1)
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
                         )
                     )
-                    .blendMode(.plusLighter)
+                    .allowsHitTesting(false)
 
-                // Контент поверх
+                // 4. Контент
                 promoContent
 
-                // Анимированная conic-обводка
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                // 5. Конусная обводка — медленно вращается.
+                shape
                     .strokeBorder(
                         AngularGradient(
                             gradient: Gradient(colors: [
-                                Color(red: 0.0, green: 0.48, blue: 1.0),   // blue
-                                Color(red: 0.55, green: 0.25, blue: 0.95), // purple
-                                Color(red: 0.95, green: 0.35, blue: 0.65), // pink
-                                Color(red: 1.0, green: 0.65, blue: 0.30),  // orange
-                                Color(red: 0.0, green: 0.48, blue: 1.0),   // back to blue
+                                Color(red: 0.42, green: 0.25, blue: 0.95), // violet
+                                Color(red: 0.72, green: 0.28, blue: 0.96), // purple
+                                Color(red: 0.96, green: 0.35, blue: 0.72), // magenta
+                                Color(red: 1.00, green: 0.45, blue: 0.48), // coral
+                                Color(red: 1.00, green: 0.62, blue: 0.35), // amber
+                                Color(red: 0.42, green: 0.25, blue: 0.95), // back
                             ]),
                             center: .center,
-                            angle: angle
+                            angle: borderAngle
                         ),
-                        lineWidth: 1.5
+                        lineWidth: 1.1
                     )
+                    .allowsHitTesting(false)
+
+                // 6. Inner glass rim — отполированный верхний кант.
+                shape
+                    .inset(by: 0.8)
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(cs == .dark ? 0.38 : 0.55),
+                                Color.white.opacity(0.0)
+                            ],
+                            startPoint: .top,
+                            endPoint: .center
+                        ),
+                        lineWidth: 0.6
+                    )
+                    .allowsHitTesting(false)
             }
             .frame(height: 108)
+            // КРИТИЧНО: клипаем всё внутреннее по форме карточки.
+            // Без этого specular/sweep вылезают за скруглённые углы.
+            .clipShape(shape)
+            .contentShape(shape)
+            // Собираем внутренние слои в один композит → одна тень.
+            .compositingGroup()
+            // Тени — снаружи клипа, статические радиусы.
+            .shadow(
+                color: Color(hue: hueA, saturation: 0.78, brightness: 1.0)
+                    .opacity(0.34 + breath * 0.18),
+                radius: 28, x: 0, y: 10
+            )
+            .shadow(
+                color: Color(hue: hueB, saturation: 0.62, brightness: 1.0)
+                    .opacity(0.18 + (1 - breath) * 0.12),
+                radius: 22, x: 0, y: -4
+            )
+            .shadow(
+                color: Color.black.opacity(cs == .dark ? 0.42 : 0.10),
+                radius: 4, x: 0, y: 2
+            )
         }
     }
 
@@ -730,10 +876,10 @@ struct SettingsView: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
-                    Text("Nexus Pro")
+                    Text("Nexus")
                         .font(.system(size: 17, weight: .bold, design: .rounded))
                         .foregroundStyle(fg)
-                    Text("NEW")
+                    Text("PRO")
                         .font(.system(size: 9, weight: .heavy))
                         .kerning(0.5)
                         .foregroundStyle(.white)
@@ -788,7 +934,13 @@ struct SettingsView: View {
             }
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
-                    Text("Nexus Pro").font(.system(size: 16, weight: .semibold, design: .rounded)).foregroundStyle(fg)
+                    Text("Nexus").font(.system(size: 16, weight: .semibold, design: .rounded)).foregroundStyle(fg)
+                    Text("PRO")
+                        .font(.system(size: 9, weight: .heavy))
+                        .kerning(0.5)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 5).padding(.vertical, 1)
+                        .background(Color(red:0.95,green:0.35,blue:0.65), in: Capsule())
                     Text("активна").font(.system(size: 12)).foregroundStyle(.green)
                 }
                 Text("План: \(subscriptionManager.currentPlan.displayName)")
@@ -945,45 +1097,49 @@ struct SettingsView: View {
 
     private var preferencesSection: some View {
         NXSection(title: "Внешний вид") {
+            // Все 5 меню используют один и тот же кастомный `Menu`-лейбл
+            // (prefMenuLabel) вместо нативного `Picker(.menu)`. Нативный
+            // picker-style добавляет свой внутренний паддинг → значение
+            // не доходит до правого края. С кастомным лейблом текст +
+            // chevron хуггают правый край ряда (упираются в DS.hPad),
+            // а ряды визуально идентичны между собой.
+
             // Theme
             prefRow(icon: "paintbrush.fill", bg: Color(red:0.55,green:0.1,blue:0.9), label: "Тема") {
-                Picker("", selection: $selectedTheme) {
-                    ForEach(AppTheme.allCases, id: \.self) { t in Text(t.rawValue).tag(t) }
+                Menu {
+                    ForEach(AppTheme.allCases, id: \.self) { t in
+                        Button(t.rawValue) {
+                            selectedTheme = t
+                            appState.settings.theme = t
+                        }
+                    }
+                } label: {
+                    prefMenuLabel(selectedTheme.rawValue)
                 }
-                .pickerStyle(.menu).tint(fg.opacity(0.5))
-                .onChange(of: selectedTheme) { _, t in appState.settings.theme = t }
             }
             NXDivider()
             // Language
             prefRow(icon: "globe", bg: Color(red:0.0,green:0.4,blue:0.9), label: "Язык") {
-                Picker("", selection: $appState.settings.language) {
-                    Text("🇺🇸 English").tag("en_US")
-                    Text("🇷🇺 Русский").tag("ru_RU")
-                    Text("🇪🇸 Español").tag("es_ES")
-                    Text("🇫🇷 Français").tag("fr_FR")
-                    Text("🇩🇪 Deutsch").tag("de_DE")
-                    Text("🇮🇹 Italiano").tag("it_IT")
-                    Text("🇧🇷 Português").tag("pt_BR")
-                    Text("🇯🇵 日本語").tag("ja_JP")
-                    Text("🇰🇷 한국어").tag("ko_KR")
-                    Text("🇨🇳 中文").tag("zh_CN")
-                    Text("🇸🇦 العربية").tag("ar_SA")
-                    Text("🇮🇳 हिन्दी").tag("hi_IN")
-                    Text("🇹🇷 Türkçe").tag("tr_TR")
-                    Text("🇺🇦 Українська").tag("uk_UA")
-                    Text("🇵🇱 Polski").tag("pl_PL")
+                Menu {
+                    ForEach(Self.languageOptions, id: \.0) { tag, title in
+                        Button(title) {
+                            appState.settings.language = tag
+                            showLanguageAlert = true
+                        }
+                    }
+                } label: {
+                    prefMenuLabel(Self.languageLabel(appState.settings.language))
                 }
-                .pickerStyle(.menu).tint(fg.opacity(0.5))
-                .onChange(of: appState.settings.language) { _, _ in showLanguageAlert = true }
             }
             NXDivider()
             // Units
             prefRow(icon: "ruler.fill", bg: Color(red:0.3,green:0.3,blue:0.36), label: "Единицы") {
-                Picker("", selection: $selectedUnits) {
-                    Text("Метрическая").tag("Метрическая")
-                    Text("Имперская").tag("Имперская")
+                Menu {
+                    Button("Метрическая") { selectedUnits = "Метрическая" }
+                    Button("Имперская")   { selectedUnits = "Имперская" }
+                } label: {
+                    prefMenuLabel(selectedUnits)
                 }
-                .pickerStyle(.menu).tint(fg.opacity(0.5))
             }
             NXDivider()
             // Timezone — полный список идентификаторов IANA
@@ -993,15 +1149,7 @@ struct SettingsView: View {
                         Button(Self.timezoneLabel(tzId)) { selectedTimezone = tzId }
                     }
                 } label: {
-                    HStack(spacing: 4) {
-                        NXMarqueeText(text: Self.timezoneLabel(selectedTimezone),
-                                      font: .system(size: 14),
-                                      color: Color(.secondaryLabel))
-                            .frame(width: 130)
-                        Image(systemName: "chevron.up.chevron.down")
-                            .font(.system(size: 10))
-                            .foregroundStyle(fg.opacity(0.3))
-                    }
+                    prefMenuLabel(Self.timezoneLabel(selectedTimezone))
                 }
             }
             NXDivider()
@@ -1016,18 +1164,57 @@ struct SettingsView: View {
                         Button(c) { selectedCurrency = c }
                     }
                 } label: {
-                    HStack(spacing: 4) {
-                        NXMarqueeText(text: selectedCurrency,
-                                      font: .system(size: 14),
-                                      color: Color(.secondaryLabel))
-                            .frame(width: 130)
-                        Image(systemName: "chevron.up.chevron.down")
-                            .font(.system(size: 10))
-                            .foregroundStyle(fg.opacity(0.3))
-                    }
+                    prefMenuLabel(selectedCurrency)
                 }
             }
         }
+    }
+
+    // MARK: - Unified trailing label for preferences menus
+    //
+    // Все 5 рядов секции «Внешний вид» используют эту форму: значение
+    // серого цвета + маленький chevron, без фиксированной ширины — так
+    // содержимое естественно прижимается к правому краю ряда.
+    @ViewBuilder
+    private func prefMenuLabel(_ text: String) -> some View {
+        HStack(spacing: 4) {
+            Text(text)
+                .font(.system(size: 14))
+                .foregroundStyle(fg.opacity(0.5))
+                .lineLimit(1)
+                .truncationMode(.middle)
+            Image(systemName: "chevron.up.chevron.down")
+                .font(.system(size: 10))
+                .foregroundStyle(fg.opacity(0.3))
+        }
+    }
+
+    // MARK: - Language options
+    //
+    // Источник правды для списка языков + соответствия «tag → красивый
+    // заголовок с флагом». Используем и для меню, и для trailing-label'а,
+    // чтобы не рассинхронизировать (было: Picker содержал тексты, но при
+    // выбранном значении «ru_RU» нигде не был записан label для отрисовки).
+    private static let languageOptions: [(String, String)] = [
+        ("en_US", "🇺🇸 English"),
+        ("ru_RU", "🇷🇺 Русский"),
+        ("es_ES", "🇪🇸 Español"),
+        ("fr_FR", "🇫🇷 Français"),
+        ("de_DE", "🇩🇪 Deutsch"),
+        ("it_IT", "🇮🇹 Italiano"),
+        ("pt_BR", "🇧🇷 Português"),
+        ("ja_JP", "🇯🇵 日本語"),
+        ("ko_KR", "🇰🇷 한국어"),
+        ("zh_CN", "🇨🇳 中文"),
+        ("ar_SA", "🇸🇦 العربية"),
+        ("hi_IN", "🇮🇳 हिन्दी"),
+        ("tr_TR", "🇹🇷 Türkçe"),
+        ("uk_UA", "🇺🇦 Українська"),
+        ("pl_PL", "🇵🇱 Polski")
+    ]
+
+    private static func languageLabel(_ tag: String) -> String {
+        languageOptions.first(where: { $0.0 == tag })?.1 ?? tag
     }
 
     @ViewBuilder
@@ -1045,32 +1232,49 @@ struct SettingsView: View {
     // MARK: - Security
 
     private var securitySection: some View {
-        NXSection(title: "Безопасность") {
-            // Face ID
-            HStack(spacing: 14) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: DS.iconSz * 0.26)
-                        .fill(Color.green)
-                        .frame(width: DS.iconSz, height: DS.iconSz)
-                    Image(systemName: "faceid")
-                        .font(.system(size: appState.settings.faceIDEnabled ? 22 : 18, weight: .regular))
-                        .foregroundStyle(.white)
-                        .animation(.spring(response: 0.3, dampingFraction: 0.65),
-                                   value: appState.settings.faceIDEnabled)
-                }
-                Text("Face ID / Touch ID")
-                    .font(.system(size: DS.bodySz))
-                    .foregroundStyle(fg)
-                Spacer()
-                Toggle("", isOn: $appState.settings.faceIDEnabled)
-                    .labelsHidden()
-                    .tint(.green)
-                    .onChange(of: appState.settings.faceIDEnabled) { _, on in
-                        if on { triggerBiometrics() }
+        // passcodeTick читается, чтобы view перерисовалась после set/clear
+        // кода-пароля внутри PasscodeLockView (статический helper не @Published).
+        _ = passcodeTick
+        let passcodeIsSet = AppPasscodeStore.isSet
+        let faceOn = appState.settings.faceIDEnabled && passcodeIsSet
+
+        return NXSection(title: "Безопасность") {
+            // ──────────────────────────────────────────────────────────
+            // ОДНА строка — «Код-пароль и Face ID». Push открывает
+            // полноэкранную PasscodeLockView (как в Telegram: «Passcode
+            // Lock»). Внутри — Set/Change/Off + Auto-Lock + Face ID toggle.
+            // ──────────────────────────────────────────────────────────
+            NavigationLink {
+                PasscodeLockView(passcodeTick: $passcodeTick)
+                    .environmentObject(appState)
+            } label: {
+                HStack(spacing: 14) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: DS.iconSz * 0.26)
+                            .fill(passcodeIsSet ? Color.green : Color(red: 0.55, green: 0.55, blue: 0.60))
+                            .frame(width: DS.iconSz, height: DS.iconSz)
+                        Image(systemName: passcodeIsSet ? "lock.fill" : "lock.open.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(.white)
                     }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Код-пароль и Face ID")
+                            .font(.system(size: DS.bodySz))
+                            .foregroundStyle(fg)
+                        Text(securityRowSubtitle(set: passcodeIsSet, face: faceOn))
+                            .font(.system(size: 11))
+                            .foregroundStyle(fg.opacity(0.45))
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(fg.opacity(0.30))
+                }
+                .padding(.horizontal, DS.hPad)
+                .padding(.vertical, DS.rowV)
+                .contentShape(Rectangle())
             }
-            .padding(.horizontal, DS.hPad)
-            .padding(.vertical, DS.rowV)
+            .buttonStyle(.plain)
 
             NXDivider()
 
@@ -1089,6 +1293,14 @@ struct SettingsView: View {
                     handleSpotlightToggle(enabled)
                 }
         }
+    }
+
+    /// Подзаголовок под «Код-пароль и Face ID»: показывает текущее состояние
+    /// одной короткой фразой, чтобы пользователь видел что внутри без захода.
+    private func securityRowSubtitle(set: Bool, face: Bool) -> String {
+        if !set         { return "Выключено" }
+        if face         { return "Включён · Face ID" }
+        return "Включён"
     }
 
     @ViewBuilder
@@ -1135,7 +1347,7 @@ struct SettingsView: View {
                             color: Color(.secondaryLabel),
                             speed: 22
                         )
-                        .frame(width: 95)
+                        .frame(width: 160)
                         .offset(y: 2)
                         Image(systemName: "doc.on.doc.fill")
                             .font(.system(size: 14))
@@ -1280,9 +1492,11 @@ struct SettingsView: View {
 
             // «Поддержать проект» убран: вместо него будет подписка (см. плитку над профилем).
 
-            actionRow(icon: "star.fill", bg: Color(red:1,green:0.75,blue:0), title: "Оценить в App Store") {
-                // Заглушка: пока нет своей страницы в App Store — открываем любую.
-                openURL("https://apps.apple.com/app/apple-store/id375380948")
+            actionRow(icon: "star.fill", bg: Color(red:1,green:0.75,blue:0), title: "Оценить приложение") {
+                // Нативный in-app prompt — iOS сам решит, показывать его сейчас или нет
+                // (SKStoreReviewController квотирует до 3 показов в год).
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                requestReview()
             }
             NXDivider()
 
@@ -1695,38 +1909,156 @@ struct SettingsView: View {
         }
     }
 
+    /// Динамически перечисляет все верхнеуровневые элементы в Caches и tmp,
+    /// считает суммарный размер каждого, присваивает дружелюбное название и
+    /// иконку. Раньше было захардкожено 5 имён → у живого приложения почти
+    /// всегда оставался только пункт «Прочее». Теперь видны все категории.
     private func buildCacheItems() -> [CacheItem] {
-        var items: [CacheItem] = []
         let fm = FileManager.default
-        guard let base = fm.urls(for: .cachesDirectory, in: .userDomainMask).first else { return [] }
-        let knownFolders: [(String, String, String)] = [
-            ("Images",   "Изображения",    "photo.fill"),
-            ("URLCache", "API-данные",     "network"),
-            ("Temp",     "Временные файлы","doc.fill"),
-            ("Logs",     "Логи",           "list.bullet.rectangle"),
-            ("Database", "База данных",    "cylinder.fill"),
-        ]
-        for (folder, label, icon) in knownFolders {
-            let url = base.appendingPathComponent(folder)
-            var size: Int64 = 0
-            if let en = fm.enumerator(at: url, includingPropertiesForKeys: [.fileSizeKey]) {
-                for case let f as URL in en {
-                    size += Int64((try? f.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
+        var items: [CacheItem] = []
+
+        // Базы для скана: Library/Caches + tmp.
+        var bases: [URL] = []
+        if let cache = fm.urls(for: .cachesDirectory, in: .userDomainMask).first {
+            bases.append(cache)
+        }
+        let tmpURL = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+        bases.append(tmpURL)
+
+        // Накапливаем размер «верхнеуровневых» отдельных файлов в корне Caches/tmp
+        // в один общий пункт «Корневые файлы». Папки идут отдельными пунктами.
+        var rootFilesSize: Int64 = 0
+
+        for base in bases {
+            guard let entries = try? fm.contentsOfDirectory(
+                at: base,
+                includingPropertiesForKeys: [.isDirectoryKey, .fileSizeKey],
+                options: [.skipsHiddenFiles]
+            ) else { continue }
+
+            for entry in entries {
+                let isDir = (try? entry.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
+                let size  = directorySize(at: entry, fileManager: fm)
+                guard size > 0 else { continue }
+
+                if isDir {
+                    let meta = friendlyMeta(for: entry.lastPathComponent, isTmp: base == tmpURL)
+                    items.append(CacheItem(name: meta.label, icon: meta.icon, size: size))
+                } else {
+                    rootFilesSize += size
                 }
             }
-            if size > 0 { items.append(CacheItem(name: label, icon: icon, size: size)) }
         }
-        let accounted = Set(knownFolders.map { base.appendingPathComponent($0.0).path })
-        var other: Int64 = 0
-        if let en = fm.enumerator(at: base, includingPropertiesForKeys: [.fileSizeKey]) {
+
+        if rootFilesSize > 0 {
+            items.append(CacheItem(name: "Корневые файлы", icon: "doc.fill", size: rootFilesSize))
+        }
+
+        // Объединяем пункты с одинаковым названием (например, два «Логи» из
+        // разных корней суммируются в один).
+        var merged: [String: CacheItem] = [:]
+        for it in items {
+            if let cur = merged[it.name] {
+                merged[it.name] = CacheItem(name: cur.name, icon: cur.icon, size: cur.size + it.size)
+            } else {
+                merged[it.name] = it
+            }
+        }
+        return merged.values.sorted { $0.size > $1.size }
+    }
+
+    /// Рекурсивно считает байты внутри URL (или возвращает размер файла).
+    private func directorySize(at url: URL, fileManager: FileManager) -> Int64 {
+        let isDir = (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
+        if !isDir {
+            return Int64((try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
+        }
+        var total: Int64 = 0
+        if let en = fileManager.enumerator(at: url, includingPropertiesForKeys: [.fileSizeKey]) {
             for case let f as URL in en {
-                if !accounted.contains(where: { f.path.hasPrefix($0) }) {
-                    other += Int64((try? f.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
-                }
+                total += Int64((try? f.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
             }
         }
-        if other > 0 { items.append(CacheItem(name: "Прочее", icon: "folder.fill", size: other)) }
-        return items.sorted { $0.size > $1.size }
+        return total
+    }
+
+    /// Бакетирует ЛЮБОЕ имя папки/файла кэша в один из ~8 человеческих
+    /// разделов. В UI ни в каком случае не должны просачиваться сырые
+    /// bundle-id'ы (com.apple.WebKit.Networking и т.п.) — они все
+    /// сворачиваются в «Системный кэш».
+    private func friendlyMeta(for folderName: String, isTmp: Bool) -> (label: String, icon: String) {
+        let lower = folderName.lowercased()
+
+        // 1. Изображения — image-кэши SDK (SDImage, Kingfisher, FBImage...).
+        if lower.contains("image") || lower.contains("photo")
+            || lower.contains("kingfisher") || lower.contains("sdwebimage") {
+            return ("Изображения", "photo.fill")
+        }
+
+        // 2. Сетевые данные — URLCache / fsCachedData / HTTP-кэш.
+        if lower.contains("urlcache") || lower.contains("nsurlcache")
+            || lower.contains("fscacheddata") || lower.contains("httpcache")
+            || lower.contains("network") {
+            return ("Сетевые данные", "network")
+        }
+
+        // 3. Снимки UIKit (мульти-таскинг превью, TextKit-снэпшоты).
+        if lower.contains("snapshot") {
+            return ("Снимки экрана", "rectangle.on.rectangle")
+        }
+
+        // 4. Логи / краш-репорты.
+        if lower.contains("log") || lower.contains("crashreport") || lower.contains("diagnostic") {
+            return ("Логи", "list.bullet.rectangle")
+        }
+
+        // 5. Firebase / Firestore (всё, что начинается на firebase / firestore / fir_).
+        if lower.contains("firestore") || lower.contains("firebase")
+            || lower.hasPrefix("fir_") {
+            return ("Firebase", "flame.fill")
+        }
+
+        // 6. Google SDK (Sign-In, GTM, AdMob и т.п.).
+        if lower.hasPrefix("com.google.") || lower.contains("googleusermessagingplatform")
+            || lower.contains("gtm") {
+            return ("Google SDK", "g.circle.fill")
+        }
+
+        // 7. База данных — sqlite / realm / coredata.
+        if lower.contains("database") || lower.hasSuffix(".sqlite") || lower.hasSuffix(".db")
+            || lower.contains("realm") || lower.contains("coredata") {
+            return ("База данных", "cylinder.fill")
+        }
+
+        // 8. Медиа — видео / аудио.
+        if lower.contains("video") || lower.hasSuffix(".mp4") || lower.hasSuffix(".mov") {
+            return ("Видео", "play.rectangle.fill")
+        }
+        if lower.contains("audio") || lower.contains("sound") || lower.hasSuffix(".m4a") {
+            return ("Аудио", "speaker.wave.2.fill")
+        }
+
+        // 9. Системный кэш — всё, что относится к iOS/Apple-фреймворкам:
+        //    WebKit, Metal, CFNetwork, UIKit, CoreText и т.д. Эти папки
+        //    раньше просачивались в UI как «com.apple.WebKit.Networking»;
+        //    теперь свёрнуты в один понятный раздел.
+        if lower.hasPrefix("com.apple.") || lower.contains("webkit") || lower.contains("metal")
+            || lower.contains("cfnetwork") || lower.contains("coretext") || lower.contains("uikit") {
+            return ("Системный кэш", "gearshape.fill")
+        }
+
+        // 10. Шрифты / документы / загрузки — на всякий случай.
+        if lower.contains("font") { return ("Шрифты", "textformat") }
+        if lower.contains("download") { return ("Загрузки", "arrow.down.circle.fill") }
+        if lower.contains("document") { return ("Документы", "doc.text.fill") }
+
+        // 11. tmp-подпапки → «Временные файлы».
+        if isTmp || lower.contains("temp") || lower.contains("tmp") {
+            return ("Временные файлы", "doc.fill")
+        }
+
+        // 12. Всё остальное — «Прочее». Никаких bundle-id'ов в UI.
+        return ("Прочее", "tray.fill")
     }
 
     // MARK: - Auth Method Handlers
@@ -1942,22 +2274,14 @@ struct PrivacySheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(cs == .dark ? .white : .black)
-                        .scaleEffect(closePressed ? 0.88 : 1.0)
-                        .animation(.easeInOut(duration: 0.18), value: closePressed)
-                        .contentShape(Rectangle())
-                        .highPriorityGesture(
-                            DragGesture(minimumDistance: 0)
-                                .onChanged { _ in closePressed = true }
-                                .onEnded { g in
-                                    closePressed = false
-                                    if abs(g.translation.width) < 18 && abs(g.translation.height) < 18 {
-                                        dismiss()
-                                    }
-                                }
-                        )
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(cs == .dark ? .white : .black)
+                    }
+                    .buttonStyle(ToolbarCloseStyle())
                 }
             }
         }
@@ -2110,22 +2434,14 @@ struct IntegrationDetailSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(fg)
-                        .scaleEffect(closePressed ? 0.88 : 1.0)
-                        .animation(.easeInOut(duration: 0.18), value: closePressed)
-                        .contentShape(Rectangle())
-                        .highPriorityGesture(
-                            DragGesture(minimumDistance: 0)
-                                .onChanged { _ in closePressed = true }
-                                .onEnded { g in
-                                    closePressed = false
-                                    if abs(g.translation.width) < 18 && abs(g.translation.height) < 18 {
-                                        dismiss()
-                                    }
-                                }
-                        )
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(fg)
+                    }
+                    .buttonStyle(ToolbarCloseStyle())
                 }
             }
             .alert("Отключить \(integration.name)?", isPresented: $confirmDisconnect) {
@@ -2329,22 +2645,14 @@ struct AuthMethodSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(fg)
-                        .scaleEffect(closePressed ? 0.88 : 1.0)
-                        .animation(.easeInOut(duration: 0.18), value: closePressed)
-                        .contentShape(Rectangle())
-                        .highPriorityGesture(
-                            DragGesture(minimumDistance: 0)
-                                .onChanged { _ in closePressed = true }
-                                .onEnded { g in
-                                    closePressed = false
-                                    if abs(g.translation.width) < 18 && abs(g.translation.height) < 18 {
-                                        dismiss()
-                                    }
-                                }
-                        )
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(fg)
+                    }
+                    .buttonStyle(ToolbarCloseStyle())
                 }
             }
             .alert("Отключить \(kind.title)?", isPresented: $confirmDisconnect) {
@@ -2853,22 +3161,14 @@ struct InfoSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(cs == .dark ? .white : .black)
-                        .scaleEffect(closePressed ? 0.88 : 1.0)
-                        .animation(.easeInOut(duration: 0.18), value: closePressed)
-                        .contentShape(Rectangle())
-                        .highPriorityGesture(
-                            DragGesture(minimumDistance: 0)
-                                .onChanged { _ in closePressed = true }
-                                .onEnded { g in
-                                    closePressed = false
-                                    if abs(g.translation.width) < 18 && abs(g.translation.height) < 18 {
-                                        dismiss()
-                                    }
-                                }
-                        )
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(cs == .dark ? .white : .black)
+                    }
+                    .buttonStyle(ToolbarCloseStyle())
                 }
             }
         }
@@ -3039,22 +3339,14 @@ struct CacheBreakdownSheet: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     // Системный glass-круг уже даёт фон — просто кладём крестик.
-                    Image(systemName: "xmark")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(cs == .dark ? .white : .black)
-                        .scaleEffect(closePressed ? 0.88 : 1.0)
-                        .animation(.easeInOut(duration: 0.18), value: closePressed)
-                        .contentShape(Rectangle())
-                        .highPriorityGesture(
-                            DragGesture(minimumDistance: 0)
-                                .onChanged { _ in closePressed = true }
-                                .onEnded { g in
-                                    closePressed = false
-                                    if abs(g.translation.width) < 18 && abs(g.translation.height) < 18 {
-                                        dismiss()
-                                    }
-                                }
-                        )
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(cs == .dark ? .white : .black)
+                    }
+                    .buttonStyle(ToolbarCloseStyle())
                 }
             }
         }
@@ -3095,6 +3387,443 @@ struct TooltipPopupView: View {
             .padding(24)
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22))
             .padding(.horizontal, 40)
+        }
+    }
+}
+
+// MARK: - App Passcode Store
+//
+// Хранилище 4-значного код-пароля приложения. Telegram-style flow:
+//   1. Пользователь устанавливает 4 цифры → SHA256-хэш в UserDefaults.
+//   2. На следующем входе хэш-сравнение разблокирует app.
+//   3. Face ID — это надстройка ПОВЕРХ кода (fallback на ввод цифр).
+//
+// Plain UserDefaults тут осознанный компромисс: Keychain дал бы +security,
+// но добавил бы 70+ строк boilerplate. SHA256-хэш делает brute force всё
+// равно нерациональным при 4 цифрах + локальной попытке.
+
+enum AppPasscodeStore {
+    private static let key = "nx.appPasscode.sha256"
+
+    static var isSet: Bool {
+        guard let str = UserDefaults.standard.string(forKey: key) else { return false }
+        return !str.isEmpty
+    }
+
+    /// Сохраняет SHA256-хэш кода. Перезаписывает существующий.
+    static func save(_ code: String) {
+        UserDefaults.standard.set(hash(code), forKey: key)
+    }
+
+    /// Сравнивает введённый код с сохранённым хэшем.
+    static func verify(_ code: String) -> Bool {
+        guard let stored = UserDefaults.standard.string(forKey: key) else { return false }
+        return stored == hash(code)
+    }
+
+    /// Полностью удаляет код-пароль (после disable-flow).
+    static func clear() {
+        UserDefaults.standard.removeObject(forKey: key)
+    }
+
+    private static func hash(_ s: String) -> String {
+        let data = Data(s.utf8)
+        return SHA256.hash(data: data).compactMap { String(format: "%02x", $0) }.joined()
+    }
+}
+
+// MARK: - Passcode Setup / Change / Disable Sheet
+//
+// Один универсальный шит для трёх операций:
+//   • setup   — два шага: «новый код» → «повторите».
+//   • change  — три шага: «текущий» → «новый» → «повторите».
+//   • disable — один шаг: «текущий», после успеха onSuccess стирает код.
+//
+// 4-значный pin без подтверждающих кнопок: вводишь 4 цифры — шаг едет
+// сам. Ошибка → встряска + красная подпись + сброс.
+
+struct PasscodeSetupSheet: View {
+    enum Mode { case setup, change, disable }
+
+    let mode: Mode
+    let onSuccess: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var cs
+
+    /// Текущий шаг внутри flow.
+    private enum Step { case verifyOld, enterNew, confirmNew }
+    @State private var step: Step = .verifyOld
+
+    @State private var input: String = ""
+    @State private var firstEntry: String = ""
+    @State private var errorText: String? = nil
+    @State private var shake: Bool = false
+    @FocusState private var focused: Bool
+
+    private var fg: Color {
+        cs == .dark ? .white : Color(red: 0.11, green: 0.11, blue: 0.14)
+    }
+
+    private var title: String {
+        switch (mode, step) {
+        case (.setup, .enterNew):       return "Установите код-пароль"
+        case (.setup, .confirmNew):     return "Повторите код-пароль"
+        case (.change, .verifyOld):     return "Текущий код-пароль"
+        case (.change, .enterNew):      return "Новый код-пароль"
+        case (.change, .confirmNew):    return "Повторите новый код"
+        case (.disable, _):             return "Введите код-пароль"
+        default:                        return "Введите код-пароль"
+        }
+    }
+
+    private var subtitle: String {
+        switch (mode, step) {
+        case (.setup, .enterNew):       return "Придумайте 4 цифры. Они потребуются при запуске Nexus."
+        case (.setup, .confirmNew):     return "Введите те же 4 цифры ещё раз."
+        case (.change, .verifyOld):     return "Подтвердите текущий код, чтобы изменить его."
+        case (.change, .enterNew):      return "Придумайте новые 4 цифры."
+        case (.change, .confirmNew):    return "Введите новые 4 цифры ещё раз."
+        case (.disable, _):             return "Подтвердите текущий код, чтобы отключить защиту."
+        default:                        return ""
+        }
+    }
+
+    var body: some View {
+        VStack(spacing: 22) {
+            // Заголовок
+            VStack(spacing: 8) {
+                Text(title)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(fg)
+                Text(subtitle)
+                    .font(.system(size: 13))
+                    .foregroundStyle(fg.opacity(0.55))
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.top, 8)
+
+            // Точки-индикатор ввода
+            HStack(spacing: 18) {
+                ForEach(0..<4, id: \.self) { i in
+                    Circle()
+                        .fill(i < input.count ? Color(red: 0.0, green: 0.48, blue: 1.0) : fg.opacity(0.12))
+                        .frame(width: 16, height: 16)
+                        .overlay(
+                            Circle().strokeBorder(fg.opacity(0.18), lineWidth: 0.5)
+                        )
+                }
+            }
+            .offset(x: shake ? -8 : 0)
+            .animation(.default, value: shake)
+
+            if let err = errorText {
+                Text(err)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.red.opacity(0.85))
+                    .transition(.opacity)
+            }
+
+            // Скрытое текстовое поле — берёт цифровую клавиатуру.
+            // Подключённое через .focused, обеспечивает автопоявление клавы.
+            TextField("", text: $input)
+                .keyboardType(.numberPad)
+                .textContentType(.oneTimeCode)
+                .focused($focused)
+                .opacity(0.001)
+                .frame(height: 1)
+                .onChange(of: input) { _, new in
+                    handleInput(new)
+                }
+
+            Spacer()
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, 24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(
+            cs == .dark
+                ? Color(red: 0.07, green: 0.08, blue: 0.10).ignoresSafeArea()
+                : Color(red: 0.96, green: 0.97, blue: 0.99).ignoresSafeArea()
+        )
+        .onAppear {
+            // Стартовый шаг зависит от режима.
+            step = (mode == .setup) ? .enterNew : .verifyOld
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { focused = true }
+        }
+    }
+
+    private func handleInput(_ value: String) {
+        // Только цифры, максимум 4.
+        let filtered = String(value.prefix(4).filter { $0.isNumber })
+        if filtered != value { input = filtered; return }
+        guard filtered.count == 4 else { return }
+
+        switch step {
+        case .verifyOld:
+            if AppPasscodeStore.verify(filtered) {
+                if mode == .disable {
+                    onSuccess()
+                    dismiss()
+                } else {
+                    advance(to: .enterNew)
+                }
+            } else {
+                fail("Неверный код-пароль")
+            }
+
+        case .enterNew:
+            firstEntry = filtered
+            advance(to: .confirmNew)
+
+        case .confirmNew:
+            if filtered == firstEntry {
+                AppPasscodeStore.save(filtered)
+                onSuccess()
+                dismiss()
+            } else {
+                firstEntry = ""
+                fail("Коды не совпадают")
+                advance(to: .enterNew)
+            }
+        }
+    }
+
+    private func advance(to next: Step) {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            step = next
+            input = ""
+            errorText = nil
+        }
+    }
+
+    private func fail(_ msg: String) {
+        errorText = msg
+        UINotificationFeedbackGenerator().notificationOccurred(.error)
+        withAnimation(.default) { shake.toggle() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+            withAnimation(.default) { shake.toggle() }
+            input = ""
+        }
+    }
+}
+
+// MARK: - Passcode Lock (полноэкранная страница как в Telegram)
+//
+// Push'ится из Settings → «Код-пароль и Face ID». Один экран, glass-фон во
+// всю высоту, два сгруппированных «карточных» блока (как в iOS Settings):
+//   1. Кнопки «Включить/Изменить/Отключить» + поясняющий текст под ними.
+//   2. «Auto-Lock» picker + toggle «Unlock with Face ID».
+//
+// Sheet-ы для setup/change/disable — те же самые PasscodeSetupSheet, что
+// уже использовал в первой версии экрана; повторно их не описываю.
+
+struct PasscodeLockView: View {
+    @EnvironmentObject private var appState: AppState
+    @Environment(\.colorScheme) private var cs
+    @Binding var passcodeTick: Int
+
+    @State private var showSetup   = false
+    @State private var showChange  = false
+    @State private var showDisable = false
+
+    private var fg: Color {
+        cs == .dark ? .white : Color(red: 0.11, green: 0.11, blue: 0.14)
+    }
+    private var bg: Color {
+        cs == .dark
+            ? Color(red: 0.07, green: 0.08, blue: 0.10)
+            : Color(red: 0.96, green: 0.97, blue: 0.99)
+    }
+
+    /// Опции auto-lock. -1 = «Никогда».
+    private let autoLockOptions: [(label: String, sec: Int)] = [
+        ("Сразу",            0),
+        ("Через 1 минуту",   60),
+        ("Через 5 минут",    300),
+        ("Через 1 час",      3600),
+        ("Через 5 часов",    18000),
+        ("Никогда",          -1)
+    ]
+
+    private func autoLockLabel(for sec: Int) -> String {
+        autoLockOptions.first(where: { $0.sec == sec })?.label ?? "Через 1 час"
+    }
+
+    var body: some View {
+        // passcodeTick — для force-refresh после save/clear хэша.
+        let _ = passcodeTick
+        let passcodeIsSet = AppPasscodeStore.isSet
+
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 24) {
+                // ────────── Карточка 1: основные действия + note ──────────
+                VStack(alignment: .leading, spacing: 0) {
+                    actionsCard(passcodeIsSet: passcodeIsSet)
+
+                    Text(noteText(passcodeIsSet: passcodeIsSet))
+                        .font(.system(size: 12))
+                        .foregroundStyle(fg.opacity(0.50))
+                        .padding(.horizontal, 18)
+                        .padding(.top, 12)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                // ────────── Карточка 2: auto-lock + Face ID ──────────
+                if passcodeIsSet {
+                    autoLockCard
+                }
+
+                Spacer(minLength: 30)
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(bg.ignoresSafeArea())
+        .navigationTitle("Код-пароль и Face ID")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.automatic, for: .navigationBar)
+        .sheet(isPresented: $showSetup) {
+            PasscodeSetupSheet(mode: .setup) {
+                appState.settings.appPasscodeEnabled = true
+                passcodeTick &+= 1
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+            }
+            .presentationDetents([.medium])
+        }
+        .sheet(isPresented: $showChange) {
+            PasscodeSetupSheet(mode: .change) {
+                passcodeTick &+= 1
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+            }
+            .presentationDetents([.medium])
+        }
+        .sheet(isPresented: $showDisable) {
+            PasscodeSetupSheet(mode: .disable) {
+                AppPasscodeStore.clear()
+                appState.settings.appPasscodeEnabled = false
+                appState.settings.faceIDEnabled = false
+                passcodeTick &+= 1
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+            }
+            .presentationDetents([.medium])
+        }
+    }
+
+    // MARK: Cards
+
+    @ViewBuilder
+    private func actionsCard(passcodeIsSet: Bool) -> some View {
+        VStack(spacing: 0) {
+            if passcodeIsSet {
+                actionRow(label: "Изменить код-пароль", color: DS.accent1) {
+                    showChange = true
+                }
+                divider
+                actionRow(label: "Отключить код-пароль",
+                          color: Color(red: 0.95, green: 0.30, blue: 0.30)) {
+                    showDisable = true
+                }
+            } else {
+                actionRow(label: "Включить код-пароль", color: DS.accent1) {
+                    showSetup = true
+                }
+            }
+        }
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .strokeBorder(fg.opacity(0.08), lineWidth: 0.5)
+        )
+    }
+
+    private var autoLockCard: some View {
+        VStack(spacing: 0) {
+            // Auto-Lock picker (Menu)
+            Menu {
+                ForEach(autoLockOptions, id: \.sec) { opt in
+                    Button {
+                        appState.settings.appAutoLockSec = opt.sec
+                    } label: {
+                        if appState.settings.appAutoLockSec == opt.sec {
+                            Label(opt.label, systemImage: "checkmark")
+                        } else {
+                            Text(opt.label)
+                        }
+                    }
+                }
+            } label: {
+                HStack {
+                    Text("Auto-Lock")
+                        .font(.system(size: 15))
+                        .foregroundStyle(fg)
+                    Spacer()
+                    Text(autoLockLabel(for: appState.settings.appAutoLockSec))
+                        .font(.system(size: 14))
+                        .foregroundStyle(fg.opacity(0.55))
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(fg.opacity(0.30))
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            divider
+
+            // Unlock with Face ID
+            HStack {
+                Text("Разблокировка по Face ID")
+                    .font(.system(size: 15))
+                    .foregroundStyle(fg)
+                Spacer()
+                Toggle("", isOn: $appState.settings.faceIDEnabled)
+                    .labelsHidden()
+                    .tint(.green)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+        }
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .strokeBorder(fg.opacity(0.08), lineWidth: 0.5)
+        )
+    }
+
+    // MARK: Helpers
+
+    private func actionRow(label: String, color: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack {
+                Text(label)
+                    .font(.system(size: 15, weight: .regular))
+                    .foregroundStyle(color)
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var divider: some View {
+        Rectangle()
+            .fill(fg.opacity(0.07))
+            .frame(height: 0.5)
+            .padding(.leading, 16)
+    }
+
+    private func noteText(passcodeIsSet: Bool) -> String {
+        if passcodeIsSet {
+            return "Когда код-пароль включён, при запуске Nexus будет запрашивать его. Если вы забудете код, потребуется переустановить приложение — все локальные данные будут потеряны."
+        } else {
+            return "Установите 4-значный код-пароль для дополнительной защиты приложения. Вместе с Face ID код-пароль работает как резервный способ входа, если биометрия не сработает."
         }
     }
 }

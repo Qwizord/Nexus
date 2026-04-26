@@ -1,78 +1,108 @@
 import Foundation
-#if canImport(FirebaseFirestore)
-import FirebaseFirestore
-#endif
 
 // MARK: - Feedback Repository
+//
+// Локальное хранилище обращений в UserDefaults + монотонный счётчик номеров.
+// Firestore намеренно отключён: правила безопасности Firebase ещё не прописаны,
+// из-за чего продакшн падал с permission-denied. Когда бэкенд будет готов —
+// здесь появится сетевой слой поверх локального кэша. А пока:
+//
+//   • `submit`  — сохраняет тикет в UserDefaults и присваивает ему следующий №.
+//   • `fetch`   — читает все тикеты пользователя из UserDefaults.
+//   • `close`   — переводит тикет в статус `.closed` (видимо, но не редактируется).
+//   • `reopen`  — возвращает `.closed` тикет в `.open`.
+//   • `delete`  — физически удаляет тикет из локального хранилища.
+//
+// Все операции отмечены `async throws` — чтобы позже можно было бесшовно
+// подложить Firestore/REST без изменения вью.
 
 final class FeedbackRepository {
     static let shared = FeedbackRepository()
     private init() {}
 
-    #if canImport(FirebaseFirestore)
-    private let db = Firestore.firestore()
-    private let iso = ISO8601DateFormatter()
+    private let storageKey = "nexus.feedback.tickets.v1"
+    private let counterKey = "nexus.feedback.counter.v1"
+    private let queue = DispatchQueue(label: "nexus.feedback.repo", qos: .userInitiated)
 
-    // MARK: - Submit new ticket
+    // MARK: - Counter (sequential ticket numbers)
 
-    func submit(ticket: FeedbackTicket) async throws {
-        let data = ticketToFirestore(ticket)
-        try await db.collection("feedback")
-            .document(ticket.id)
-            .setData(data)
+    /// Возвращает следующий номер обращения и инкрементит счётчик.
+    /// Первый вызов вернёт 1.
+    func nextTicketNumber() -> Int {
+        queue.sync {
+            let ud = UserDefaults.standard
+            let next = ud.integer(forKey: counterKey) + 1
+            ud.set(next, forKey: counterKey)
+            return next
+        }
     }
 
-    // MARK: - Fetch tickets for user
+    /// Показать какой номер будет присвоен *следующему* обращению, не инкрементя
+    /// счётчик. Нужно, чтобы заранее нарисовать «Обращение №N» в форме до того,
+    /// как пользователь реально нажал «Отправить».
+    func peekNextTicketNumber() -> Int {
+        UserDefaults.standard.integer(forKey: counterKey) + 1
+    }
+
+    // MARK: - Read
 
     func fetchTickets(userId: String) async throws -> [FeedbackTicket] {
-        let snapshot = try await db.collection("feedback")
-            .whereField("userId", isEqualTo: userId)
-            .order(by: "createdAt", descending: true)
-            .getDocuments()
-        return snapshot.documents.compactMap { doc in
-            mapToTicket(doc.data(), id: doc.documentID)
-        }
+        loadAll()
+            .filter { $0.userId == userId }
+            .sorted { $0.createdAt > $1.createdAt }
     }
 
-    // MARK: - Serialization
+    // MARK: - Write
 
-    private func ticketToFirestore(_ t: FeedbackTicket) -> [String: Any] {
-        var data: [String: Any] = [
-            "id": t.id,
-            "userId": t.userId,
-            "userName": t.userName,
-            "message": t.message,
-            "status": t.status.rawValue,
-            "createdAt": iso.string(from: t.createdAt)
-        ]
-        if let reply = t.adminReply { data["adminReply"] = reply }
-        if let at = t.repliedAt { data["repliedAt"] = iso.string(from: at) }
-        return data
+    func submit(ticket: FeedbackTicket) async throws {
+        var all = loadAll()
+        all.append(ticket)
+        saveAll(all)
     }
 
-    private func mapToTicket(_ data: [String: Any], id: String) -> FeedbackTicket? {
-        guard let userId = data["userId"] as? String,
-              let message = data["message"] as? String else { return nil }
-        var ticket = FeedbackTicket(
-            id: id,
-            userId: userId,
-            userName: data["userName"] as? String ?? "",
-            message: message
-        )
-        if let s = data["status"] as? String {
-            ticket.status = FeedbackStatus(rawValue: s) ?? .open
-        }
-        if let dateStr = data["createdAt"] as? String {
-            ticket.createdAt = ISO8601DateFormatter().date(from: dateStr) ?? Date()
-        }
-        ticket.adminReply = data["adminReply"] as? String
-        if let replyStr = data["repliedAt"] as? String {
-            ticket.repliedAt = ISO8601DateFormatter().date(from: replyStr)
-        }
-        return ticket
+    func closeTicket(id: String) async throws {
+        var all = loadAll()
+        guard let idx = all.firstIndex(where: { $0.id == id }) else { return }
+        all[idx].status = .closed
+        saveAll(all)
     }
-    #else
-    func submit(ticket: FeedbackTicket) async throws {}
-    func fetchTickets(userId: String) async throws -> [FeedbackTicket] { [] }
-    #endif
+
+    func reopenTicket(id: String) async throws {
+        var all = loadAll()
+        guard let idx = all.firstIndex(where: { $0.id == id }) else { return }
+        all[idx].status = .open
+        saveAll(all)
+    }
+
+    func deleteTicket(id: String) async throws {
+        var all = loadAll()
+        all.removeAll { $0.id == id }
+        saveAll(all)
+    }
+
+    /// Добавляет новое сообщение в тред обращения (реплика пользователя
+    /// или администратора). Используется чатом внутри TicketDetailView.
+    func appendMessage(ticketId: String, message: FeedbackMessage) async throws {
+        var all = loadAll()
+        guard let idx = all.firstIndex(where: { $0.id == ticketId }) else { return }
+        all[idx].messages.append(message)
+        saveAll(all)
+    }
+
+    // MARK: - Private storage
+
+    private func loadAll() -> [FeedbackTicket] {
+        guard let data = UserDefaults.standard.data(forKey: storageKey) else { return [] }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return (try? decoder.decode([FeedbackTicket].self, from: data)) ?? []
+    }
+
+    private func saveAll(_ tickets: [FeedbackTicket]) {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        if let data = try? encoder.encode(tickets) {
+            UserDefaults.standard.set(data, forKey: storageKey)
+        }
+    }
 }

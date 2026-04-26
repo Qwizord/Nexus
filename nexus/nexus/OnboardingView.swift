@@ -6,8 +6,8 @@ struct OnboardingView: View {
     @State private var firstName = ""
     @State private var lastName = ""
     @State private var birthDate = Calendar.current.date(byAdding: .year, value: -25, to: Date()) ?? Date()
-    @State private var weightKg: Double = 70
-    @State private var heightCm: Double = 175
+    @State private var weightInt: Int = 70
+    @State private var heightInt: Int = 175
     @State private var gender = "Не указан"
 
     // Состояние ошибки имени
@@ -148,39 +148,31 @@ struct OnboardingView: View {
             }
 
             VStack(spacing: 20) {
-                // Weight
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("Вес")
-                            .font(.system(size: 14))
-                            .foregroundStyle(.white.opacity(0.6))
-                        Spacer()
-                        Text("\(Int(weightKg)) кг")
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(.white)
-                    }
-                    Slider(value: $weightKg, in: 40...200, step: 0.5)
-                        .tint(.white)
+                // Weight + Height в одной карточке с ruler-picker'ом — такой же,
+                // как в настройках профиля (ProfileView → physicalSection).
+                VStack(spacing: 0) {
+                    OnbRulerPickerRow(
+                        label: "Рост",
+                        value: $heightInt,
+                        range: 100...250,
+                        unit: "см",
+                        fg: .white,
+                        accent: Color(red: 0.0, green: 0.48, blue: 1.0),
+                        icon: "ruler.fill",
+                        iconColor: Color(red: 0.20, green: 0.78, blue: 0.35)
+                    )
+                    Divider().background(.white.opacity(0.08)).padding(.leading, 16)
+                    OnbRulerPickerRow(
+                        label: "Вес",
+                        value: $weightInt,
+                        range: 30...300,
+                        unit: "кг",
+                        fg: .white,
+                        accent: Color(red: 0.0, green: 0.48, blue: 1.0),
+                        icon: "scalemass.fill",
+                        iconColor: Color(red: 1.0, green: 0.42, blue: 0.62)
+                    )
                 }
-                .padding(16)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
-                .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(.white.opacity(0.12), lineWidth: 0.5))
-
-                // Height
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("Рост")
-                            .font(.system(size: 14))
-                            .foregroundStyle(.white.opacity(0.6))
-                        Spacer()
-                        Text("\(Int(heightCm)) см")
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(.white)
-                    }
-                    Slider(value: $heightCm, in: 140...220, step: 0.5)
-                        .tint(.white)
-                }
-                .padding(16)
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
                 .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(.white.opacity(0.12), lineWidth: 0.5))
 
@@ -271,8 +263,8 @@ struct OnboardingView: View {
                 firstName: firstName,
                 lastName: lastName,
                 birthDate: birthDate,
-                weightKg: weightKg,
-                heightCm: heightCm,
+                weightKg: Double(weightInt),
+                heightCm: Double(heightInt),
                 gender: gender
             )
         }
@@ -351,5 +343,204 @@ struct OnboardingField: View {
                 .fill(hasError ? Color(red: 1.0, green: 0.3, blue: 0.3).opacity(0.08) : Color.clear)
         )
         .animation(.easeInOut(duration: 0.2), value: hasError)
+    }
+}
+
+// MARK: - Ruler Picker (Onboarding copy of ProfileView's RulerPickerRow)
+//
+// Визуально и поведенчески один в один с `RulerPickerRow` из ProfileView.swift
+// (там структуры `private`, поэтому здесь — локальная копия с префиксом `Onb`).
+// Свободный drag + snap к тику + momentum через `predictedEndTranslation`,
+// rubber-banding за границами диапазона.
+
+private struct OnbRulerPickerRow: View {
+    let label: String
+    @Binding var value: Int
+    let range: ClosedRange<Int>
+    let unit: String
+    let fg: Color
+    let accent: Color
+    var icon: String? = nil
+    var iconColor: Color = .blue
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 12) {
+                if let icon {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 6.24)
+                            .fill(iconColor)
+                            .frame(width: 24, height: 24)
+                        Image(systemName: icon)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(.white)
+                    }
+                }
+                Text(label)
+                    .font(.system(size: 15))
+                    .foregroundStyle(fg)
+                Spacer(minLength: 4)
+                HStack(alignment: .firstTextBaseline, spacing: 3) {
+                    Text("\(value)")
+                        .font(.system(size: 22, weight: .semibold, design: .rounded))
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                        .foregroundStyle(fg)
+                    Text(unit)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(fg.opacity(0.45))
+                }
+                .animation(.spring(response: 0.28, dampingFraction: 0.85), value: value)
+            }
+            OnbRuler(value: $value, range: range, fg: fg, accent: accent)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+    }
+}
+
+private struct OnbRuler: View {
+    @Binding var value: Int
+    let range: ClosedRange<Int>
+    let fg: Color
+    let accent: Color
+
+    private let tickSpacing: CGFloat = 10
+    private let tickH: CGFloat = 10
+    private let tickMidH: CGFloat = 16
+    private let tickMajorH: CGFloat = 22
+
+    @State private var offsetX: CGFloat = 0
+    @State private var dragStart: CGFloat? = nil
+    @State private var lastHaptic: Int = .min
+
+    private var count: Int { range.upperBound - range.lowerBound + 1 }
+    private var minOffset: CGFloat { -CGFloat(count - 1) * tickSpacing }
+    private let maxOffset: CGFloat = 0
+
+    private func offsetFor(_ v: Int) -> CGFloat {
+        -CGFloat(v - range.lowerBound) * tickSpacing
+    }
+    private func valueAt(_ offset: CGFloat) -> Int {
+        let idx = Int((-offset / tickSpacing).rounded())
+        let clamped = max(0, min(count - 1, idx))
+        return range.lowerBound + clamped
+    }
+    private func rubberBand(_ x: CGFloat) -> CGFloat {
+        if x > maxOffset { return maxOffset + (x - maxOffset) * 0.35 }
+        if x < minOffset { return minOffset + (x - minOffset) * 0.35 }
+        return x
+    }
+
+    var body: some View {
+        GeometryReader { geo in
+            let centerX = geo.size.width / 2
+
+            ZStack {
+                HStack(spacing: 0) {
+                    ForEach(range, id: \.self) { i in
+                        tickView(for: i)
+                            .frame(width: tickSpacing, alignment: .center)
+                    }
+                }
+                .padding(.vertical, 8)
+                .offset(x: centerX + offsetX, y: 0)
+                .frame(width: geo.size.width, height: 56, alignment: .leading)
+
+                VStack(spacing: 2) {
+                    OnbTriangle()
+                        .fill(accent)
+                        .frame(width: 8, height: 6)
+                    Rectangle()
+                        .fill(accent)
+                        .frame(width: 2, height: 26)
+                }
+                .shadow(color: accent.opacity(0.4), radius: 4, y: 1)
+                .allowsHitTesting(false)
+            }
+            .contentShape(Rectangle())
+            .mask(
+                LinearGradient(
+                    stops: [
+                        .init(color: .black.opacity(0), location: 0.00),
+                        .init(color: .black,            location: 0.12),
+                        .init(color: .black,            location: 0.88),
+                        .init(color: .black.opacity(0), location: 1.00)
+                    ],
+                    startPoint: .leading, endPoint: .trailing
+                )
+            )
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { g in
+                        if dragStart == nil { dragStart = offsetX }
+                        let raw = (dragStart ?? 0) + g.translation.width
+                        offsetX = rubberBand(raw)
+                        let v = valueAt(offsetX)
+                        if v != lastHaptic {
+                            UISelectionFeedbackGenerator().selectionChanged()
+                            lastHaptic = v
+                        }
+                        if v != value { value = v }
+                    }
+                    .onEnded { g in
+                        let start = dragStart ?? offsetX
+                        let predictedRaw = start + g.predictedEndTranslation.width
+                        let targetValue = valueAt(predictedRaw)
+                        let target = offsetFor(targetValue)
+                        dragStart = nil
+                        withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) {
+                            offsetX = target
+                        }
+                        if targetValue != value {
+                            value = targetValue
+                            UISelectionFeedbackGenerator().selectionChanged()
+                        }
+                        lastHaptic = targetValue
+                    }
+            )
+        }
+        .frame(height: 56)
+        .onChange(of: value, initial: true) { _, new in
+            guard dragStart == nil else { return }
+            let target = offsetFor(new)
+            if abs(offsetX - target) > 0.5 {
+                offsetX = target
+            }
+            lastHaptic = new
+        }
+    }
+
+    @ViewBuilder
+    private func tickView(for i: Int) -> some View {
+        let isMajor = i % 10 == 0
+        let isMid   = i % 5 == 0 && !isMajor
+        let h: CGFloat = isMajor ? tickMajorH : (isMid ? tickMidH : tickH)
+        let opacity: Double = isMajor ? 0.8 : (isMid ? 0.5 : 0.28)
+
+        VStack(spacing: 3) {
+            Rectangle()
+                .fill(fg.opacity(opacity))
+                .frame(width: 1, height: h)
+            if isMajor {
+                Text("\(i)")
+                    .font(.system(size: 9, weight: .medium, design: .rounded))
+                    .foregroundStyle(fg.opacity(0.5))
+                    .fixedSize()
+            } else {
+                Color.clear.frame(height: 10)
+            }
+        }
+    }
+}
+
+private struct OnbTriangle: Shape {
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: rect.midX, y: rect.maxY))
+        p.addLine(to: CGPoint(x: rect.minX, y: rect.minY))
+        p.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        p.closeSubpath()
+        return p
     }
 }

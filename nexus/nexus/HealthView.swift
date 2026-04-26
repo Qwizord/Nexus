@@ -5,60 +5,68 @@ import Combine
 struct HealthView: View {
     @StateObject private var vm = HealthViewModel()
     @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var showStats          = false
+    @State private var showHealthSettings = false
+
+    private var fg: Color {
+        colorScheme == .dark ? .white : Color(red: 0.11, green: 0.11, blue: 0.14)
+    }
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(spacing: 20) {
-                headerSection
-                metricsGrid
-                heartRateCard
-                sleepCard
+        // Тот же паттерн, что в Settings: NavigationStack + крупный native
+        // заголовок (auto-collapse при скролле) + два toolbar-кнопки справа.
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 20) {
+                    metricsGrid
+                    heartRateCard
+                    sleepCard
 
-                // Новые карточки
-                if vm.weight != nil || vm.bloodPressureSystolic != nil || vm.oxygenSaturation != nil {
-                    additionalMetricsSection
+                    if vm.weight != nil || vm.bloodPressureSystolic != nil || vm.oxygenSaturation != nil {
+                        additionalMetricsSection
+                    }
+
+                    weeklyStepsCard
+                    Spacer(minLength: 50)
                 }
-
-                weeklyStepsCard
-                Spacer(minLength: 50)
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
             }
-            .padding(.horizontal, 16)
-            .padding(.top, verticalSizeClass == .compact ? 25 : 25)
+            .navigationTitle(L("health.title"))
+            .navigationBarTitleDisplayMode(.large)
+            .toolbarBackground(.automatic, for: .navigationBar)
+        }
+        .overlay(alignment: .topTrailing) {
+            HStack(spacing: 8) {
+                Button { showStats = true } label: {
+                    Image(systemName: "chart.xyaxis.line")
+                        .font(.system(size: 19, weight: .semibold))
+                        .foregroundStyle(fg)
+                        .frame(width: 44, height: 44)
+                        .applyGlassCircle()
+                }
+                .buttonStyle(.plain)
+                Button { showHealthSettings = true } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 19, weight: .semibold))
+                        .foregroundStyle(fg)
+                        .frame(width: 44, height: 44)
+                        .applyGlassCircle()
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.top, 8)
+            .padding(.trailing, 16)
         }
         .onAppear { vm.startListening() }
         .onDisappear { vm.stopListening() }
         .refreshable { vm.refresh() }
-    }
-
-    // MARK: - Sections
-
-    var headerSection: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(L("health.title"))
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-                Text(Date().formatted(date: .long, time: .omitted))
-                    .font(.system(size: 14))
-                    .foregroundStyle(.white.opacity(0.4))
-            }
-            Spacer()
-            HStack(spacing: 8) {
-                if vm.isSyncing {
-                    ProgressView()
-                        .tint(.white)
-                        .scaleEffect(0.8)
-                }
-                Button {
-                    vm.refresh()
-                } label: {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 16))
-                        .foregroundStyle(.white.opacity(0.7))
-                        .padding(12)
-                        .background(.ultraThinMaterial, in: Circle())
-                }
-            }
+        .sheet(isPresented: $showStats) {
+            HealthStatsSheet()
+        }
+        .sheet(isPresented: $showHealthSettings) {
+            HealthSettingsSheet()
         }
     }
 
@@ -544,5 +552,169 @@ struct GlassSection<Content: View>: View {
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
             .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(.white.opacity(0.12), lineWidth: 0.5))
             .edgeSheen(cornerRadius: 20)
+    }
+}
+
+// MARK: - Health Stats Sheet
+
+struct HealthStatsSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var fg: Color {
+        colorScheme == .dark ? .white : Color(red: 0.11, green: 0.11, blue: 0.14)
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 20) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("ЗА ПОСЛЕДНИЕ 30 ДНЕЙ")
+                            .font(.system(size: 11, weight: .semibold))
+                            .kerning(0.5)
+                            .textCase(.uppercase)
+                            .foregroundStyle(fg.opacity(0.35))
+                            .padding(.leading, 4)
+                        VStack(spacing: 0) {
+                            statRow(icon: "figure.walk", color: Color(red: 0.3, green: 0.7, blue: 1.0),
+                                    title: "Среднее шагов/день", value: "7 240")
+                            Divider().padding(.leading, 16)
+                            statRow(icon: "flame.fill", color: .orange,
+                                    title: "Среднее калорий/день", value: "480 ккал")
+                            Divider().padding(.leading, 16)
+                            statRow(icon: "bed.double.fill", color: Color(red: 0.6, green: 0.4, blue: 1.0),
+                                    title: "Средний сон", value: "7 ч 20 мин")
+                            Divider().padding(.leading, 16)
+                            statRow(icon: "heart.fill", color: .red,
+                                    title: "Средний пульс", value: "68 уд/мин")
+                        }
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+                        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(fg.opacity(0.08), lineWidth: 0.5))
+                    }
+                }
+                .padding(16)
+                .padding(.top, 8)
+            }
+            .navigationTitle("Статистика")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Готово") { dismiss() }
+                        .font(.system(size: 16, weight: .semibold))
+                        .tint(Color(red: 0, green: 0.48, blue: 1))
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+
+    private func statRow(icon: String, color: Color, title: String, value: String) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: icon)
+                .font(.system(size: 16))
+                .foregroundStyle(color)
+                .frame(width: 24)
+            Text(title)
+                .font(.system(size: 15))
+                .foregroundStyle(fg)
+            Spacer()
+            Text(value)
+                .font(.system(size: 14))
+                .foregroundStyle(fg.opacity(0.5))
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 13)
+    }
+}
+
+// MARK: - Health Settings Sheet
+
+struct HealthSettingsSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var fg: Color {
+        colorScheme == .dark ? .white : Color(red: 0.11, green: 0.11, blue: 0.14)
+    }
+
+    @State private var goalSteps   = 10000
+    @State private var goalCalories = 600
+    @State private var goalSleep   = 8
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 20) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("ЦЕЛИ")
+                            .font(.system(size: 11, weight: .semibold))
+                            .kerning(0.5)
+                            .textCase(.uppercase)
+                            .foregroundStyle(fg.opacity(0.35))
+                            .padding(.leading, 4)
+                        VStack(spacing: 0) {
+                            HStack {
+                                Label("Шаги в день", systemImage: "figure.walk")
+                                    .font(.system(size: 15))
+                                    .foregroundStyle(fg)
+                                Spacer()
+                                Text("\(goalSteps)")
+                                    .font(.system(size: 15))
+                                    .foregroundStyle(fg.opacity(0.5))
+                                Stepper("", value: $goalSteps, in: 1000...30000, step: 500)
+                                    .labelsHidden()
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            Divider().padding(.leading, 16)
+                            HStack {
+                                Label("Калории в день", systemImage: "flame.fill")
+                                    .font(.system(size: 15))
+                                    .foregroundStyle(fg)
+                                Spacer()
+                                Text("\(goalCalories) ккал")
+                                    .font(.system(size: 15))
+                                    .foregroundStyle(fg.opacity(0.5))
+                                Stepper("", value: $goalCalories, in: 200...3000, step: 50)
+                                    .labelsHidden()
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            Divider().padding(.leading, 16)
+                            HStack {
+                                Label("Сон", systemImage: "bed.double.fill")
+                                    .font(.system(size: 15))
+                                    .foregroundStyle(fg)
+                                Spacer()
+                                Text("\(goalSleep) ч")
+                                    .font(.system(size: 15))
+                                    .foregroundStyle(fg.opacity(0.5))
+                                Stepper("", value: $goalSleep, in: 4...12)
+                                    .labelsHidden()
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                        }
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+                        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(fg.opacity(0.08), lineWidth: 0.5))
+                    }
+                }
+                .padding(16)
+                .padding(.top, 8)
+            }
+            .navigationTitle("Настройки здоровья")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Готово") { dismiss() }
+                        .font(.system(size: 16, weight: .semibold))
+                        .tint(Color(red: 0, green: 0.48, blue: 1))
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
     }
 }

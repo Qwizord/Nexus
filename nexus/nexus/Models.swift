@@ -338,6 +338,13 @@ struct AppSettings: Codable {
     var calendarEnabled: Bool = false
     var iCloudEnabled: Bool = false
     var faceIDEnabled: Bool = false
+    /// Включён ли в приложении 4-значный код-пароль (Telegram-style).
+    /// Сам код-хэш хранится в `AppPasscodeStore` (UserDefaults+SHA256),
+    /// здесь только флаг для UI и Firestore-синка.
+    var appPasscodeEnabled: Bool = false
+    /// Интервал auto-lock в секундах. 0 = блокировать сразу. -1 = «никогда»
+    /// (актуально только когда appPasscodeEnabled = true).
+    var appAutoLockSec: Int = 3600
 }
 
 enum MeasurementSystem: String, Codable, CaseIterable {
@@ -494,28 +501,77 @@ enum SubscriptionPlan: String, Codable {
 
 // MARK: - Feedback
 
+/// Одно сообщение внутри обращения. `fromAdmin` различает реплики
+/// пользователя и команды Nexus.
+struct FeedbackMessage: Identifiable, Codable {
+    var id: String
+    var text: String
+    var fromAdmin: Bool
+    var createdAt: Date
+
+    init(id: String = UUID().uuidString,
+         text: String,
+         fromAdmin: Bool,
+         createdAt: Date = Date()) {
+        self.id = id
+        self.text = text
+        self.fromAdmin = fromAdmin
+        self.createdAt = createdAt
+    }
+}
+
 struct FeedbackTicket: Identifiable, Codable {
     var id: String
+    /// Человеко-читаемый номер обращения: №1, №2, …
+    /// Выдаётся монотонно возрастающим счётчиком в `FeedbackRepository`.
+    var number: Int
     var userId: String
     var userName: String
     var message: String
+    /// Дополнительные сообщения в треде (пользователь + админ).
+    /// Первое «оригинальное» сообщение живёт в `message` — для обратной
+    /// совместимости со старыми тикетами; все последующие реплики пишутся сюда.
+    var messages: [FeedbackMessage]
     var status: FeedbackStatus
     var createdAt: Date
     var adminReply: String?
     var repliedAt: Date?
 
     init(id: String = UUID().uuidString,
+         number: Int = 0,
          userId: String,
          userName: String,
          message: String) {
         self.id = id
+        self.number = number
         self.userId = userId
         self.userName = userName
         self.message = message
+        self.messages = []
         self.status = .open
         self.createdAt = Date()
         self.adminReply = nil
         self.repliedAt = nil
+    }
+
+    // Ручной Decodable — чтобы старые тикеты без `number`/`messages`
+    // не ломали декод.
+    enum CodingKeys: String, CodingKey {
+        case id, number, userId, userName, message, messages,
+             status, createdAt, adminReply, repliedAt
+    }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(String.self, forKey: .id)
+        self.number = (try? c.decode(Int.self, forKey: .number)) ?? 0
+        self.userId = try c.decode(String.self, forKey: .userId)
+        self.userName = try c.decode(String.self, forKey: .userName)
+        self.message = try c.decode(String.self, forKey: .message)
+        self.messages = (try? c.decode([FeedbackMessage].self, forKey: .messages)) ?? []
+        self.status = (try? c.decode(FeedbackStatus.self, forKey: .status)) ?? .open
+        self.createdAt = (try? c.decode(Date.self, forKey: .createdAt)) ?? Date()
+        self.adminReply = try? c.decode(String.self, forKey: .adminReply)
+        self.repliedAt = try? c.decode(Date.self, forKey: .repliedAt)
     }
 }
 

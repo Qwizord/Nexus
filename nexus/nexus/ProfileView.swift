@@ -49,6 +49,7 @@ struct ProfileView: View {
     @State private var isSaving = false
     @State private var closePressed = false
     @State private var savePressed  = false
+    @State private var confirmDeletePhoto = false
 
     // MARK: Design tokens (зеркалят SettingsView.DS)
     private let accent1 = Color(red: 0.0, green: 0.48, blue: 1.0)   // #0077FF
@@ -94,19 +95,75 @@ struct ProfileView: View {
         "Не указан", "Европеоид", "Азиат", "Латиноамериканец",
         "Темнокожий", "Ближневосточный", "Смешанный", "Другой"
     ]
-    private let ethnicities = [
-        "Не указан", "Русский", "Украинец", "Белорус", "Казах",
-        "Татарин", "Армянин", "Грузин", "Узбек", "Азербайджанец",
-        "Немец", "Американец", "Британец", "Француз", "Испанец",
-        "Итальянец", "Китаец", "Японец", "Кореец", "Индиец", "Другой"
-    ]
+    /// Этнические группы / национальности. Отсортированы по алфавиту (ru_RU),
+    /// "Не указан" всегда первый, "Другой" — последний.
+    private let ethnicities: [String] = {
+        let base = [
+            // Народы России
+            "Русский", "Татарин", "Башкир", "Чуваш", "Мордвин", "Удмурт",
+            "Марийец", "Коми", "Карел", "Калмык", "Бурят", "Якут",
+            "Тувинец", "Алтаец", "Хакас",
+            // Кавказ
+            "Чеченец", "Ингуш", "Осетин", "Аварец", "Лезгин", "Даргинец",
+            "Кумык", "Лакец", "Табасаран", "Ногаец",
+            "Кабардинец", "Балкарец", "Карачаевец", "Адыгеец", "Черкес",
+            // СНГ
+            "Украинец", "Белорус", "Казах", "Киргиз", "Узбек", "Таджик",
+            "Туркмен", "Каракалпак", "Азербайджанец", "Армянин", "Грузин",
+            "Абхаз", "Молдаванин", "Литовец", "Латыш", "Эстонец",
+            // Европа
+            "Немец", "Австриец", "Британец", "Ирландец", "Француз", "Бельгиец",
+            "Голландец", "Швейцарец", "Испанец", "Португалец", "Итальянец",
+            "Швед", "Норвежец", "Датчанин", "Финн", "Исландец",
+            "Поляк", "Чех", "Словак", "Венгр", "Румын", "Болгарин",
+            "Серб", "Хорват", "Словенец", "Македонец", "Албанец", "Грек",
+            // Ближний Восток / Азия
+            "Еврей", "Араб", "Турок", "Перс", "Курд",
+            "Афганец", "Пакистанец", "Индиец", "Бенгалец", "Шри‑ланкиец",
+            "Китаец", "Японец", "Кореец", "Монгол", "Вьетнамец", "Таец",
+            "Индонезиец", "Филиппинец", "Малайзиец",
+            // Америки / Африка / Океания
+            "Американец", "Канадец", "Мексиканец", "Бразилец", "Аргентинец",
+            "Африканец", "Австралиец", "Новозеландец",
+            "Цыган", "Метис", "Смешанного происхождения"
+        ]
+        let sorted = base.sorted { $0.localizedCompare($1) == .orderedAscending }
+        return ["Не указан"] + sorted + ["Другой"]
+    }()
+    /// Флаг для названия страны. Возвращает пустую строку для плейсхолдеров.
+    private static func flag(for country: String) -> String {
+        let map: [String: String] = [
+            "Россия": "🇷🇺", "Украина": "🇺🇦", "Беларусь": "🇧🇾", "Казахстан": "🇰🇿",
+            "Германия": "🇩🇪", "США": "🇺🇸", "Великобритания": "🇬🇧", "Франция": "🇫🇷",
+            "Испания": "🇪🇸", "Италия": "🇮🇹", "Польша": "🇵🇱", "Нидерланды": "🇳🇱",
+            "Швеция": "🇸🇪", "Швейцария": "🇨🇭", "Китай": "🇨🇳", "Япония": "🇯🇵",
+            "Южная Корея": "🇰🇷", "Индия": "🇮🇳", "ОАЭ": "🇦🇪", "Израиль": "🇮🇱",
+            "Грузия": "🇬🇪", "Армения": "🇦🇲", "Азербайджан": "🇦🇿", "Узбекистан": "🇺🇿",
+            "Канада": "🇨🇦", "Австралия": "🇦🇺", "Бразилия": "🇧🇷", "Аргентина": "🇦🇷",
+            "Турция": "🇹🇷", "Кыргызстан": "🇰🇬", "Таджикистан": "🇹🇯", "Туркменистан": "🇹🇲",
+            "Молдова": "🇲🇩", "Литва": "🇱🇹", "Латвия": "🇱🇻", "Эстония": "🇪🇪",
+            "Чехия": "🇨🇿", "Австрия": "🇦🇹", "Португалия": "🇵🇹", "Норвегия": "🇳🇴",
+            "Дания": "🇩🇰", "Финляндия": "🇫🇮", "Ирландия": "🇮🇪", "Бельгия": "🇧🇪",
+            "Мексика": "🇲🇽", "Вьетнам": "🇻🇳", "Таиланд": "🇹🇭", "Индонезия": "🇮🇩",
+            "Сингапур": "🇸🇬", "Саудовская Аравия": "🇸🇦"
+        ]
+        return map[country] ?? ""
+    }
+
     private let countries = [
-        "Не указана", "Россия", "Украина", "Беларусь", "Казахстан",
-        "Германия", "США", "Великобритания", "Франция", "Испания",
-        "Италия", "Польша", "Нидерланды", "Швеция", "Швейцария",
-        "Китай", "Япония", "Южная Корея", "Индия", "ОАЭ",
-        "Израиль", "Грузия", "Армения", "Азербайджан", "Узбекистан",
-        "Канада", "Австралия", "Бразилия", "Аргентина", "Другая"
+        "Не указана",
+        "Россия", "Украина", "Беларусь", "Казахстан", "Кыргызстан",
+        "Таджикистан", "Туркменистан", "Узбекистан", "Молдова",
+        "Грузия", "Армения", "Азербайджан",
+        "Германия", "Франция", "Испания", "Италия", "Португалия",
+        "Нидерланды", "Бельгия", "Швеция", "Норвегия", "Дания", "Финляндия",
+        "Швейцария", "Австрия", "Ирландия", "Великобритания",
+        "Польша", "Чехия", "Литва", "Латвия", "Эстония",
+        "США", "Канада", "Мексика", "Бразилия", "Аргентина",
+        "Китай", "Япония", "Южная Корея", "Индия", "Вьетнам", "Таиланд",
+        "Индонезия", "Сингапур",
+        "Турция", "Израиль", "ОАЭ", "Саудовская Аравия",
+        "Австралия", "Другая"
     ]
 
     // MARK: - Body
@@ -128,12 +185,15 @@ struct ProfileView: View {
                 .padding(.top, 4)
                 .padding(.bottom, 24)
             }
+            // Inline-заголовок — как было изначально: компактный верх,
+            // профиль начинается сразу под тулбаром.
             .navigationTitle("Профиль")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) { closeButton }
                 ToolbarItem(placement: .topBarTrailing) { saveButton }
             }
+            .toolbarBackground(.automatic, for: .navigationBar)
         }
         .onAppear { loadData() }
         .onChange(of: selectedPhotoItem) { _, item in
@@ -143,53 +203,60 @@ struct ProfileView: View {
                 }
             }
         }
+        .alert("Удалить фото?", isPresented: $confirmDeletePhoto) {
+            Button("Удалить", role: .destructive) {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    appState.updateAvatar(nil)
+                }
+                selectedPhotoItem = nil
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+            }
+            Button("Отмена", role: .cancel) {}
+        } message: {
+            Text("Вы точно хотите удалить фото профиля?")
+        }
     }
 
     // MARK: - Toolbar buttons (glass-circle, как в CacheBreakdownSheet)
 
+    /// Нативный Button в ToolbarItem → iOS рисует круглую glass-капсулу
+    /// и сам обеспечивает тап-таргет ≥ 44pt (без ручного frame, который
+    /// превращал glass в овал).
     private var closeButton: some View {
-        Image(systemName: "xmark")
-            .font(.system(size: 13, weight: .bold))
-            .foregroundStyle(cs == .dark ? .white : .black)
-            .scaleEffect(closePressed ? 0.88 : 1.0)
-            .animation(.easeInOut(duration: 0.18), value: closePressed)
-            .contentShape(Rectangle())
-            .highPriorityGesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { _ in closePressed = true }
-                    .onEnded { g in
-                        closePressed = false
-                        if abs(g.translation.width) < 18 && abs(g.translation.height) < 18 {
-                            dismiss()
-                        }
-                    }
-            )
+        Button {
+            dismiss()
+        } label: {
+            Image(systemName: "xmark")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(cs == .dark ? .white : .black)
+        }
+        .buttonStyle(ToolbarCloseStyle())
     }
 
+    /// Save-кнопка в тулбаре: используем нативный iOS-26 toolbar-button с
+    /// `.borderedProminent` + `.buttonBorderShape(.circle)` — это даёт ровно
+    /// ту же круглую капсулу, что и закрывающий ×, но с заливкой акцентом.
+    /// Так синяя кнопка визуально 1-в-1 совпадает с белой close-кнопкой,
+    /// только заливка — фирменный синий, а галочка — белая.
     private var saveButton: some View {
-        ZStack {
+        Button {
+            guard !isSaving else { return }
+            saveProfile()
+        } label: {
             if isSaving {
-                ProgressView().tint(accent1).scaleEffect(0.8)
+                ProgressView()
+                    .tint(.white)
+                    .controlSize(.small)
             } else {
                 Image(systemName: "checkmark")
                     .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(accent1)
+                    .foregroundStyle(.white)
             }
         }
-        .scaleEffect(savePressed ? 0.88 : 1.0)
-        .animation(.easeInOut(duration: 0.18), value: savePressed)
-        .contentShape(Rectangle())
-        .highPriorityGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in if !isSaving { savePressed = true } }
-                .onEnded { g in
-                    savePressed = false
-                    if !isSaving,
-                       abs(g.translation.width) < 18 && abs(g.translation.height) < 18 {
-                        saveProfile()
-                    }
-                }
-        )
+        .buttonStyle(.borderedProminent)
+        .buttonBorderShape(.circle)
+        .tint(accent1)
+        .disabled(isSaving)
     }
 
     // MARK: - Avatar
@@ -197,81 +264,83 @@ struct ProfileView: View {
     private var avatarBlock: some View {
         let avatarData   = appState.userProfile?.avatarData
         let userInitials = appState.userProfile?.initials ?? "AN"
+        let hasPhoto     = avatarData != nil
 
+        // Аватар + единый бейдж в правом-нижнем углу:
+        //   • нет фото  → синий кружок с "camera.fill" → открывает PhotosPicker
+        //   • есть фото → красный кружок с "xmark"     → удаляет фото
+        // Так не надо отдельной кнопки-капсулы снизу.
         return VStack(spacing: 10) {
-            PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
-                ZStack(alignment: .bottomTrailing) {
+            ZStack(alignment: .bottomTrailing) {
+                // Сам аватар.
+                Group {
                     if let data = avatarData, let uiImage = UIImage(data: data) {
                         Image(uiImage: uiImage)
                             .resizable().scaledToFill()
                             .frame(width: 96, height: 96)
                             .clipShape(Circle())
-                            .overlay(
-                                Circle().strokeBorder(stroke, lineWidth: 0.6)
-                            )
+                            .overlay(Circle().strokeBorder(stroke, lineWidth: 0.6))
                     } else {
                         ZStack {
-                            Circle().fill(accentGrad).frame(width: 96, height: 96)
+                            Circle().fill(accent1).frame(width: 96, height: 96)
                             Text(userInitials)
                                 .font(.system(size: 34, weight: .semibold, design: .rounded))
                                 .foregroundStyle(.white)
                         }
                     }
+                }
 
-                    Circle()
-                        .fill(accent1)
-                        .frame(width: 28, height: 28)
-                        .overlay(
-                            Circle().strokeBorder(
-                                cs == .dark ? Color.black.opacity(0.25) : Color.white,
-                                lineWidth: 2.5
-                            )
+                // Бейдж-переключатель (добавить / удалить).
+                if hasPhoto {
+                    // Красный крестик — удалить фото (с подтверждением).
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        confirmDeletePhoto = true
+                    } label: {
+                        badgeCircle(
+                            fill: cRed,
+                            systemName: "xmark"
                         )
-                        .overlay(
-                            Image(systemName: "camera.fill")
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(.white)
-                        )
-                        .offset(x: 2, y: 2)
+                    }
+                    .buttonStyle(.plain)
+                    .transition(.opacity.combined(with: .scale(scale: 0.8)))
+                } else {
+                    // Синий "добавить фото".
+                    PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                        badgeCircle(fill: accent1, systemName: "camera.fill")
+                    }
+                    .buttonStyle(.plain)
+                    .transition(.opacity.combined(with: .scale(scale: 0.8)))
                 }
             }
-            .buttonStyle(.plain)
 
-            // Имя под аватаркой (если заполнено) — маленькая подсказка,
-            // чтобы блок выглядел законченным.
+            // Имя под аватаркой (если заполнено).
             if !(firstName.isEmpty && lastName.isEmpty) {
                 Text("\(firstName) \(lastName)".trimmingCharacters(in: .whitespaces))
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(fg)
             }
-
-            // Кнопка удалить фото — показываем только если есть что удалять.
-            if avatarData != nil {
-                Button {
-                    let h = UIImpactFeedbackGenerator(style: .light)
-                    h.impactOccurred()
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        appState.updateAvatar(nil)
-                    }
-                    selectedPhotoItem = nil
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "trash")
-                            .font(.system(size: 11, weight: .medium))
-                        Text("Удалить фото")
-                            .font(.system(size: 13, weight: .medium))
-                    }
-                    .foregroundStyle(.red.opacity(0.85))
-                    .padding(.horizontal, 12).padding(.vertical, 6)
-                    .background(.red.opacity(0.08), in: Capsule())
-                    .overlay(Capsule().strokeBorder(.red.opacity(0.2), lineWidth: 0.5))
-                }
-                .buttonStyle(.plain)
-                .transition(.opacity.combined(with: .scale(scale: 0.9)))
-            }
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 4)
+    }
+
+    /// Единый бейдж 28×28 поверх аватарки. Используется и для "добавить",
+    /// и для "удалить" — меняется только заливка и SF Symbol.
+    @ViewBuilder
+    private func badgeCircle(fill: Color, systemName: String) -> some View {
+        // Без обводки — чистый цвет круга. Лёгкая тень даёт необходимое
+        // визуальное разделение с аватаркой, но не вводит лишний цвет.
+        Circle()
+            .fill(fill)
+            .frame(width: 28, height: 28)
+            .overlay(
+                Image(systemName: systemName)
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(.white)
+            )
+            .shadow(color: Color.black.opacity(0.25), radius: 3, x: 0, y: 1)
+            .offset(x: 2, y: 2)
     }
 
     // MARK: - Sections
@@ -291,15 +360,15 @@ struct ProfileView: View {
     private var cGold:   Color { Color(red: 0.95, green: 0.75, blue: 0.10) }
 
     private var nameSection: some View {
-        glassSection(title: "ИМЯ") {
+        glassSection(title: "Имя") {
             ProfileField("Имя", text: $firstName, fg: fg,
                          icon: "person.fill", iconColor: cBlue)
             divider
-            ProfileField("Отчество", text: $middleName, placeholder: "Введите", fg: fg,
-                         icon: "person.2.fill", iconColor: cPurple)
-            divider
             ProfileField("Фамилия", text: $lastName, fg: fg,
                          icon: "person.crop.rectangle.fill", iconColor: cTeal)
+            divider
+            ProfileField("Отчество", text: $middleName, placeholder: "Введите", fg: fg,
+                         icon: "person.2.fill", iconColor: cPurple)
             divider
             ProfileField("Username", text: $username, fg: fg,
                          icon: "at", iconColor: cOrange)
@@ -307,7 +376,7 @@ struct ProfileView: View {
     }
 
     private var physicalSection: some View {
-        glassSection(title: "ФИЗИЧЕСКИЕ ДАННЫЕ") {
+        glassSection(title: "Физические данные") {
             RulerPickerRow(
                 label: "Рост",
                 value: $heightInt,
@@ -333,8 +402,8 @@ struct ProfileView: View {
             menuRow(label: "Пол", value: gender, options: genders,
                     icon: "figure.stand", iconColor: cIndigo) { gender = $0 }
             divider
-            HStack(spacing: 12) {
-                NXIconBox(icon: "birthday.cake.fill", bg: cRed, size: 28, iconSize: 14)
+            HStack(spacing: 14) {
+                NXIconBox(icon: "birthday.cake.fill", bg: cRed)
                 Text("Дата рождения")
                     .font(.system(size: bodySz))
                     .foregroundStyle(fg)
@@ -342,23 +411,27 @@ struct ProfileView: View {
                 DatePicker("", selection: $birthDate, displayedComponents: .date)
                     .labelsHidden()
                     .tint(accent1)
+                    .environment(\.font, .system(size: 13))
+                    .scaleEffect(0.88, anchor: .trailing)
+                    .fixedSize()
             }
             .padding(.horizontal, hPad).padding(.vertical, rowV)
         }
     }
 
     private var originSection: some View {
-        glassSection(title: "ПРОИСХОЖДЕНИЕ") {
+        glassSection(title: "Происхождение") {
             menuRow(label: "Раса", value: race, options: races,
                     icon: "globe.europe.africa.fill", iconColor: cBlue) { race = $0 }
             divider
-            menuRow(label: "Этнос / Национальность", value: ethnicity, options: ethnicities,
+            // Короткий label — "Национальность" влезает в одну строку.
+            menuRow(label: "Национальность", value: ethnicity, options: ethnicities,
                     icon: "flag.fill", iconColor: cRed) { ethnicity = $0 }
         }
     }
 
     private var lifestyleSection: some View {
-        glassSection(title: "ОБРАЗ ЖИЗНИ") {
+        glassSection(title: "Образ жизни") {
             menuRow(label: "Тип питания", value: dietType, options: diets,
                     icon: "leaf.fill", iconColor: cGreen,
                     valueMaxWidth: 200) { dietType = $0 }
@@ -370,9 +443,10 @@ struct ProfileView: View {
     }
 
     private var locationSection: some View {
-        glassSection(title: "МЕСТОПОЛОЖЕНИЕ") {
+        glassSection(title: "Местоположение") {
             menuRow(label: "Страна", value: country, options: countries,
-                    icon: "globe", iconColor: cCyan) { country = $0 }
+                    icon: "globe", iconColor: cCyan,
+                    optionPrefix: { Self.flag(for: $0) }) { country = $0 }
             divider
             ProfileField("Город", text: $city, fg: fg,
                          icon: "building.2.fill", iconColor: cOrange)
@@ -380,26 +454,23 @@ struct ProfileView: View {
     }
 
     private var bioSection: some View {
-        glassSection(title: "О СЕБЕ") {
-            HStack(alignment: .top, spacing: 12) {
-                NXIconBox(icon: "text.quote", bg: cPurple, size: 28, iconSize: 14)
-                    .padding(.top, 10)
-                ZStack(alignment: .topLeading) {
-                    if bio.isEmpty {
-                        Text("Биография")
-                            .foregroundStyle(fg.opacity(0.35))
-                            .font(.system(size: bodySz))
-                            .padding(.top, 14)
-                            .padding(.leading, 4)
-                            .allowsHitTesting(false)
-                    }
-                    TextEditor(text: $bio)
-                        .foregroundStyle(fg)
+        // Без иконки — биография должна "дышать" на всю ширину секции.
+        glassSection(title: "О себе") {
+            ZStack(alignment: .topLeading) {
+                if bio.isEmpty {
+                    Text("Расскажите о себе…")
+                        .foregroundStyle(fg.opacity(0.35))
                         .font(.system(size: bodySz))
-                        .scrollContentBackground(.hidden)
-                        .frame(minHeight: 100, maxHeight: 160)
-                        .padding(.vertical, 6)
+                        .padding(.top, 14)
+                        .padding(.leading, 4)
+                        .allowsHitTesting(false)
                 }
+                TextEditor(text: $bio)
+                    .foregroundStyle(fg)
+                    .font(.system(size: bodySz))
+                    .scrollContentBackground(.hidden)
+                    .frame(minHeight: 110, maxHeight: 170)
+                    .padding(.vertical, 6)
             }
             .padding(.horizontal, hPad)
             .padding(.vertical, 6)
@@ -408,15 +479,16 @@ struct ProfileView: View {
 
     // MARK: - Helpers
 
+    /// Заголовок секции — точно как `NXSection` в SettingsView:
+    /// 15pt medium, secondaryLabel, без uppercase/kerning, leading-отступ = hPad (16).
+    /// Вертикальный gap между заголовком и карточкой = 6.
     @ViewBuilder
     private func glassSection<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             Text(title)
-                .font(.system(size: 11, weight: .semibold))
-                .kerning(0.5)
-                .textCase(.uppercase)
-                .foregroundStyle(fg.opacity(0.45))
-                .padding(.leading, 4)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(Color(.secondaryLabel))
+                .padding(.leading, hPad)
             VStack(spacing: 0) { content() }
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: radius))
                 .overlay(RoundedRectangle(cornerRadius: radius).strokeBorder(stroke, lineWidth: 0.5))
@@ -427,32 +499,54 @@ struct ProfileView: View {
         Divider().background(fg.opacity(0.06)).padding(.leading, hPad)
     }
 
+    /// Универсальный row с Menu-пикером.
+    /// - Parameters:
+    ///   - optionPrefix: опциональная функция, возвращающая префикс для каждого пункта (например, флаг страны).
+    /// Строка всегда single-line: label имеет `lineLimit(1)` + layoutPriority(1), value — `lineLimit(1)`.
     @ViewBuilder
     private func menuRow(label: String,
                          value: String,
                          options: [String],
                          icon: String? = nil,
                          iconColor: Color = .blue,
-                         valueMaxWidth: CGFloat = 180,
+                         valueMaxWidth: CGFloat = 160,
+                         optionPrefix: ((String) -> String)? = nil,
                          onSelect: @escaping (String) -> Void) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 14) {
             if let icon {
-                NXIconBox(icon: icon, bg: iconColor, size: 28, iconSize: 14)
+                NXIconBox(icon: icon, bg: iconColor)
             }
             Text(label)
                 .font(.system(size: bodySz))
                 .foregroundStyle(fg)
+                .lineLimit(1)
+                .minimumScaleFactor(0.88)
+                .layoutPriority(1)
             Spacer(minLength: 4)
             Menu {
                 ForEach(options, id: \.self) { opt in
-                    Button(opt) { onSelect(opt) }
+                    Button {
+                        onSelect(opt)
+                    } label: {
+                        if let prefix = optionPrefix?(opt), !prefix.isEmpty {
+                            Text("\(prefix)  \(opt)")
+                        } else {
+                            Text(opt)
+                        }
+                    }
                 }
             } label: {
                 HStack(spacing: 4) {
-                    Text(value.isEmpty || value.contains("Не указ") ? "Выбрать" : value)
+                    let isPlaceholder = value.isEmpty || value.contains("Не указ")
+                    let displayPrefix = (optionPrefix?(value) ?? "")
+                    let shownText = isPlaceholder
+                        ? "Выбрать"
+                        : (displayPrefix.isEmpty ? value : "\(displayPrefix) \(value)")
+                    Text(shownText)
                         .font(.system(size: 14))
                         .foregroundStyle(fg.opacity(0.5))
                         .lineLimit(1)
+                        .truncationMode(.tail)
                         .frame(maxWidth: valueMaxWidth, alignment: .trailing)
                     Image(systemName: "chevron.up.chevron.down")
                         .font(.system(size: 10))
@@ -537,9 +631,9 @@ private struct ProfileField: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 14) {
             if let icon {
-                NXIconBox(icon: icon, bg: iconColor, size: 28, iconSize: 14)
+                NXIconBox(icon: icon, bg: iconColor)
             }
             Text(label)
                 .font(.system(size: 15))
@@ -557,18 +651,19 @@ private struct ProfileField: View {
                 .frame(maxWidth: 180)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.vertical, 10)
     }
 }
 
 // MARK: - Ruler Picker
 //
-// Горизонтальная шкала со свободным скроллом + snap к ближайшему тику,
-// rubber-banding на границах диапазона (native iOS scroll), haptic feedback
-// на каждое изменение значения. Вдохновлено Opal.
+// Горизонтальная шкала со свободным drag'ом + snap к ближайшему тику + momentum
+// по `predictedEndTranslation`. Никаких ScrollView / scrollPosition — именно
+// нативный scroll раньше "отбрасывал" значение, потому что во время drag'а
+// SwiftUI успевал пересчитать якорь.
 //
-// Реализация через ScrollView + scrollTargetLayout + scrollPosition(id:).
-// Native-инерция и резиновый bounce на границах идут из коробки.
+// Вся логика — чистый DragGesture + один @State `offsetX`. Rubber-banding за
+// границами диапазона — вручную, 0.35 коэффициент как у UIScrollView.
 
 private struct RulerPickerRow: View {
     let label: String
@@ -582,9 +677,9 @@ private struct RulerPickerRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 12) {
+            HStack(spacing: 14) {
                 if let icon {
-                    NXIconBox(icon: icon, bg: iconColor, size: 28, iconSize: 14)
+                    NXIconBox(icon: icon, bg: iconColor)
                 }
                 Text(label)
                     .font(.system(size: 15))
@@ -605,7 +700,7 @@ private struct RulerPickerRow: View {
             Ruler(value: $value, range: range, fg: fg, accent: accent)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.vertical, 10)
     }
 }
 
@@ -617,46 +712,60 @@ private struct Ruler: View {
 
     /// Расстояние между соседними тиками.
     private let tickSpacing: CGFloat = 10
-    /// Высота тика для обычной / для "каждый 5" / для "каждый 10".
     private let tickH: CGFloat = 10
     private let tickMidH: CGFloat = 16
     private let tickMajorH: CGFloat = 22
 
-    /// Адаптер-байндинг для scrollPosition. Прокси между
-    /// `@Binding var value: Int` и ожидаемым `Binding<Int?>`.
-    /// Чисто прокидывает новое значение наверх и триггерит haptic —
-    /// без промежуточного @State, который раньше вызывал «отбрасывание».
-    private var positionBinding: Binding<Int?> {
-        Binding(
-            get: { value },
-            set: { new in
-                if let n = new, n != value {
-                    value = n
-                    UISelectionFeedbackGenerator().selectionChanged()
-                }
-            }
-        )
+    /// Текущий "сырой" сдвиг полосы. offsetX = 0 → в центре тик `range.lowerBound`;
+    /// чтобы показать значение v, нужен `offsetFor(v) = -(v - lowerBound) * tickSpacing`.
+    @State private var offsetX: CGFloat = 0
+    /// offsetX в момент начала drag'а. Пока не nil — drag активен, внешний `value`
+    /// НЕ переписывает offsetX (это и убирает snap-back).
+    @State private var dragStart: CGFloat? = nil
+    /// Последнее значение, на котором отыграл haptic — чтобы не спамить тик за тиком
+    /// при одинаковом индексе.
+    @State private var lastHaptic: Int = .min
+
+    // MARK: Math
+
+    private var count: Int { range.upperBound - range.lowerBound + 1 }
+    private var minOffset: CGFloat { -CGFloat(count - 1) * tickSpacing }
+    private let maxOffset: CGFloat = 0
+
+    private func offsetFor(_ v: Int) -> CGFloat {
+        -CGFloat(v - range.lowerBound) * tickSpacing
+    }
+    private func valueAt(_ offset: CGFloat) -> Int {
+        let idx = Int((-offset / tickSpacing).rounded())
+        let clamped = max(0, min(count - 1, idx))
+        return range.lowerBound + clamped
+    }
+    /// Классическое iOS-овое сопротивление за пределами диапазона.
+    private func rubberBand(_ x: CGFloat) -> CGFloat {
+        if x > maxOffset { return maxOffset + (x - maxOffset) * 0.35 }
+        if x < minOffset { return minOffset + (x - minOffset) * 0.35 }
+        return x
     }
 
     var body: some View {
         GeometryReader { geo in
-            let centerPad = geo.size.width / 2
-            ScrollView(.horizontal, showsIndicators: false) {
+            let centerX = geo.size.width / 2
+
+            ZStack {
+                // Полоса тиков — фиксированная ширина = count * tickSpacing.
+                // Рисуем её выровненной по левому краю контейнера, а центрирование
+                // делаем вручную через offset(centerX + offsetX).
                 HStack(spacing: 0) {
                     ForEach(range, id: \.self) { i in
                         tickView(for: i)
                             .frame(width: tickSpacing, alignment: .center)
-                            .id(i)
                     }
                 }
-                .scrollTargetLayout()
-                .padding(.horizontal, centerPad)
                 .padding(.vertical, 8)
-            }
-            .scrollTargetBehavior(.viewAligned(limitBehavior: .never))
-            .scrollPosition(id: positionBinding, anchor: .center)
-            .overlay(alignment: .center) {
-                // Центральный индикатор — треугольник сверху + вертикальная линия.
+                .offset(x: centerX + offsetX, y: 0)
+                .frame(width: geo.size.width, height: 56, alignment: .leading)
+
+                // Центральный индикатор (прозрачен для тапов — drag идёт по полосе).
                 VStack(spacing: 2) {
                     Triangle()
                         .fill(accent)
@@ -668,20 +777,63 @@ private struct Ruler: View {
                 .shadow(color: accent.opacity(0.4), radius: 4, y: 1)
                 .allowsHitTesting(false)
             }
-            // Плавное затухание по краям, чтобы крайние тики не выглядели обрезанными.
+            .contentShape(Rectangle())
+            // Плавное затухание по краям.
             .mask(
                 LinearGradient(
                     stops: [
-                        .init(color: .black.opacity(0),   location: 0.00),
-                        .init(color: .black,              location: 0.12),
-                        .init(color: .black,              location: 0.88),
-                        .init(color: .black.opacity(0),   location: 1.00)
+                        .init(color: .black.opacity(0), location: 0.00),
+                        .init(color: .black,            location: 0.12),
+                        .init(color: .black,            location: 0.88),
+                        .init(color: .black.opacity(0), location: 1.00)
                     ],
                     startPoint: .leading, endPoint: .trailing
                 )
             )
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { g in
+                        if dragStart == nil { dragStart = offsetX }
+                        let raw = (dragStart ?? 0) + g.translation.width
+                        offsetX = rubberBand(raw)
+                        let v = valueAt(offsetX)
+                        if v != lastHaptic {
+                            UISelectionFeedbackGenerator().selectionChanged()
+                            lastHaptic = v
+                        }
+                        if v != value { value = v }
+                    }
+                    .onEnded { g in
+                        // Прогноз iOS — куда бы инерция затащила палец.
+                        let start = dragStart ?? offsetX
+                        let predictedRaw = start + g.predictedEndTranslation.width
+                        // Всегда останавливаемся на существующем тике.
+                        let targetValue = valueAt(predictedRaw)
+                        let target = offsetFor(targetValue)
+                        dragStart = nil
+                        withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) {
+                            offsetX = target
+                        }
+                        if targetValue != value {
+                            value = targetValue
+                            UISelectionFeedbackGenerator().selectionChanged()
+                        }
+                        lastHaptic = targetValue
+                    }
+            )
         }
         .frame(height: 56)
+        // Внешние изменения value (loadData, программное обновление) синхронизируют
+        // offsetX — но ТОЛЬКО если юзер сейчас не тянет. initial:true seed'ит позицию
+        // при первом появлении.
+        .onChange(of: value, initial: true) { _, new in
+            guard dragStart == nil else { return }
+            let target = offsetFor(new)
+            if abs(offsetX - target) > 0.5 {
+                offsetX = target
+            }
+            lastHaptic = new
+        }
     }
 
     @ViewBuilder

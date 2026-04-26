@@ -422,18 +422,36 @@ class AppState: ObservableObject {
 
     // MARK: - Firebase Profile Loading
 
+    /// Cache-first загрузка профиля.
+    ///
+    /// 1. СИНХРОННО показываем локально сохранённый профиль (UserDefaults) —
+    ///    UI отображается мгновенно, без пустого кадра при холодном старте.
+    /// 2. В фоне дёргаем Firestore. Если приходят свежие данные — заменяем
+    ///    локальные и обновляем кэш на диске.
+    /// 3. Если сети нет / ошибка — остаёмся на локальной версии (то, что
+    ///    уже показали).
     private func loadProfileFromFirebase() {
         guard let userId = authManager.currentUserId else { return }
+
+        // Шаг 1 — мгновенно из локального кэша.
+        if let cached = loadUserProfile() {
+            self.userProfile = cached
+        }
+
+        // Шаг 2 — асинхронно из Firestore (Task наследует @MainActor от класса).
         Task {
             do {
                 let profile = try await firebase.userRepo.fetchProfile(userId: userId)
                 self.userProfile = profile
+                // Сохраняем актуальный снимок локально для следующих
+                // холодных запусков.
+                self.saveUserProfile(profile)
+
                 let remoteSettings = try await firebase.userRepo.fetchSettings(userId: userId)
                 self.settings = remoteSettings
-                saveSettings(remoteSettings)
+                self.saveSettings(remoteSettings)
             } catch {
-                // Fallback to local
-                self.userProfile = loadUserProfile()
+                // Молча остаёмся на локальной версии — она уже показана.
             }
         }
     }

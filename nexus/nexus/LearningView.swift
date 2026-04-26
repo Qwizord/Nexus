@@ -119,67 +119,28 @@ struct KnowledgeNote: Identifiable {
     var updatedAt: Date
 }
 
-// MARK: - LearningView (Main)
+// MARK: - LearningTab (top-level so sections can reference it)
 
-struct LearningView: View {
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.verticalSizeClass) private var verticalSizeClass
-    @StateObject private var vm = LearningViewModel()
-    @State private var selectedTab: LearningTab = .news
+enum LearningTab: String, CaseIterable {
+    case news      = "Новости"
+    case tasks     = "Задачи"
+    case knowledge = "База знаний"
 
-    enum LearningTab: String, CaseIterable {
-        case news = "Новости"
-        case tasks = "Задачи"
-        case knowledge = "База знаний"
-
-        var icon: String {
-            switch self {
-            case .news: return "newspaper.fill"
-            case .tasks: return "checklist"
-            case .knowledge: return "brain.filled.head.profile"
-            }
+    var icon: String {
+        switch self {
+        case .news:      return "newspaper.fill"
+        case .tasks:     return "checklist"
+        case .knowledge: return "brain.filled.head.profile"
         }
     }
+}
+
+// MARK: - LearningTabBar (reusable, placed inside each section's ScrollView)
+
+struct LearningTabBar: View {
+    @Binding var selectedTab: LearningTab
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Обучение")
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
-                        .foregroundStyle(.primary)
-                    Text(selectedTab.rawValue)
-                        .font(.system(size: 14))
-                        .foregroundStyle(.secondary)
-                        .opacity(0.6)
-                }
-                Spacer()
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, verticalSizeClass == .compact ? 25 : 25)
-            .padding(.bottom, 12)
-
-            // Tab Selector
-            learningTabPicker
-                .padding(.horizontal, 16)
-                .padding(.bottom, 12)
-
-            // Content
-            TabView(selection: $selectedTab) {
-                NewsSection(vm: vm)
-                    .tag(LearningTab.news)
-                TasksSection(vm: vm)
-                    .tag(LearningTab.tasks)
-                KnowledgeSection(vm: vm)
-                    .tag(LearningTab.knowledge)
-            }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            .animation(.spring(response: 0.4, dampingFraction: 0.85), value: selectedTab)
-        }
-    }
-
-    private var learningTabPicker: some View {
         HStack(spacing: 8) {
             ForEach(LearningTab.allCases, id: \.self) { tab in
                 Button {
@@ -200,8 +161,7 @@ struct LearningView: View {
                         selectedTab == tab
                         ? AnyShapeStyle(LinearGradient(
                             colors: [Color(red: 0.0, green: 0.48, blue: 1.0), Color(red: 0.34, green: 0.84, blue: 1.0)],
-                            startPoint: .leading, endPoint: .trailing
-                        ))
+                            startPoint: .leading, endPoint: .trailing))
                         : AnyShapeStyle(Color.primary.opacity(0.08)),
                         in: Capsule()
                     )
@@ -213,10 +173,91 @@ struct LearningView: View {
     }
 }
 
+// MARK: - LearningView (Main)
+
+struct LearningView: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @StateObject private var vm = LearningViewModel()
+    @State private var selectedTab: LearningTab = .news
+    @State private var showAddSheet        = false
+    @State private var showLearningSettings = false
+
+    private var fg: Color {
+        colorScheme == .dark ? .white : Color(red: 0.11, green: 0.11, blue: 0.14)
+    }
+
+    var body: some View {
+        NavigationStack {
+            // Единый ScrollView — заголовок сворачивается при скролле
+            // (как Health/Finance/Settings). Горизонтальный свайп убран,
+            // переключение — только через LearningTabBar.
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 0) {
+                    // Пикер вкладок — первый элемент, скроллится вместе с контентом
+                    LearningTabBar(selectedTab: $selectedTab)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                        .padding(.bottom, 12)
+
+                    // Контент активной вкладки (embedded = без своего ScrollView)
+                    Group {
+                        switch selectedTab {
+                        case .news:
+                            NewsSection(vm: vm, selectedTab: $selectedTab, embedded: true)
+                        case .tasks:
+                            TasksSection(vm: vm, selectedTab: $selectedTab, embedded: true)
+                        case .knowledge:
+                            KnowledgeSection(vm: vm, selectedTab: $selectedTab)
+                        }
+                    }
+                    .animation(.spring(response: 0.35, dampingFraction: 0.85), value: selectedTab)
+
+                    Spacer(minLength: 60)
+                }
+            }
+            .navigationTitle("Обучение")
+            .navigationBarTitleDisplayMode(.large)
+            .toolbarBackground(.automatic, for: .navigationBar)
+        }
+        .overlay(alignment: .topTrailing) {
+            HStack(spacing: 8) {
+                Button { showAddSheet = true } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 19, weight: .semibold))
+                        .foregroundStyle(fg)
+                        .frame(width: 44, height: 44)
+                        .applyGlassCircle()
+                }
+                .buttonStyle(.plain)
+                Button { showLearningSettings = true } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 19, weight: .semibold))
+                        .foregroundStyle(fg)
+                        .frame(width: 44, height: 44)
+                        .applyGlassCircle()
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.top, 8)
+            .padding(.trailing, 16)
+        }
+        .sheet(isPresented: $showAddSheet) {
+            LearningAddSheet(selectedTab: selectedTab)
+        }
+        .sheet(isPresented: $showLearningSettings) {
+            LearningSettingsSheet()
+        }
+    }
+
+}
+
 // MARK: - News Section
 
 struct NewsSection: View {
     @ObservedObject var vm: LearningViewModel
+    @Binding var selectedTab: LearningTab
+    var embedded: Bool = false
     @State private var showTopicsSheet = false
     @State private var showAllNews = false
 
@@ -227,53 +268,58 @@ struct NewsSection: View {
     }
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(spacing: 16) {
-                // Topics row
-                topicsRow
-
-                // News list
-                if filteredNews.isEmpty {
-                    emptyNewsPlaceholder
-                } else {
-                    VStack(spacing: 10) {
-                        ForEach(filteredNews.prefix(showAllNews ? 99 : 4)) { item in
-                            NewsCard(item: item) {
-                                vm.toggleSaved(newsId: item.id)
-                            }
-                        }
-                    }
-                }
-
-                // Show all button
-                if filteredNews.count > 4 {
-                    Button {
-                        withAnimation { showAllNews.toggle() }
-                    } label: {
-                        Text(showAllNews ? "Свернуть" : "Смотреть все новости (\(filteredNews.count))")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(
-                                LinearGradient(
-                                    colors: [Color(red: 0.0, green: 0.48, blue: 1.0), Color(red: 0.34, green: 0.84, blue: 1.0)],
-                                    startPoint: .leading, endPoint: .trailing
-                                ),
-                                in: Capsule()
-                            )
-                    }
-                    .buttonStyle(.plain)
-                }
-
-                Spacer(minLength: 60)
+        Group {
+            if embedded {
+                newsContent
+            } else {
+                ScrollView(showsIndicators: false) { newsContent }
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 4)
         }
         .sheet(isPresented: $showTopicsSheet) {
             TopicsSheet(topics: $vm.topics)
         }
+    }
+
+    private var newsContent: some View {
+        VStack(spacing: 16) {
+            topicsRow
+
+            if filteredNews.isEmpty {
+                emptyNewsPlaceholder
+            } else {
+                VStack(spacing: 10) {
+                    ForEach(filteredNews.prefix(showAllNews ? 99 : 4)) { item in
+                        NewsCard(item: item) {
+                            vm.toggleSaved(newsId: item.id)
+                        }
+                    }
+                }
+            }
+
+            if filteredNews.count > 4 {
+                Button {
+                    withAnimation { showAllNews.toggle() }
+                } label: {
+                    Text(showAllNews ? "Свернуть" : "Смотреть все новости (\(filteredNews.count))")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(
+                            LinearGradient(
+                                colors: [Color(red: 0.0, green: 0.48, blue: 1.0), Color(red: 0.34, green: 0.84, blue: 1.0)],
+                                startPoint: .leading, endPoint: .trailing
+                            ),
+                            in: Capsule()
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+
+            Spacer(minLength: 40)
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 4)
     }
 
     private var topicsRow: some View {
@@ -558,6 +604,8 @@ struct TopicsSheet: View {
 
 struct TasksSection: View {
     @ObservedObject var vm: LearningViewModel
+    @Binding var selectedTab: LearningTab
+    var embedded: Bool = false
     @State private var selectedDate = Date()
     @State private var showAddTask = false
     @State private var showAllTasks = false
@@ -565,7 +613,6 @@ struct TasksSection: View {
 
     private let calendar = Calendar.current
 
-    // Фильтруем задачи по выбранной дате
     var filteredTaskGroups: [TaskGroup] {
         vm.taskGroups.compactMap { group in
             let tasksForDate = group.tasks.filter { calendar.isDate($0.dueDate, inSameDayAs: selectedDate) }
@@ -577,75 +624,76 @@ struct TasksSection: View {
     }
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(spacing: 16) {
-                // Date strip
-                dateStrip
-
-                // Task groups
-                if filteredTaskGroups.isEmpty {
-                    emptyTasksPlaceholder
-                } else {
-                    VStack(spacing: 12) {
-                        ForEach(filteredTaskGroups.prefix(showAllTasks ? 99 : 2)) { group in
-                            TaskGroupCard(
-                                group: group,
-                                onToggle: { taskId in vm.toggleTask(groupId: group.id, taskId: taskId) },
-                                onDelete: { taskId in vm.deleteTask(groupId: group.id, taskId: taskId) }
-                            )
-                        }
-                    }
-                }
-
-                // Show all / Add buttons
-                HStack(spacing: 10) {
-                    if filteredTaskGroups.count > 2 {
-                        Button {
-                            withAnimation { showAllTasks.toggle() }
-                        } label: {
-                            Text(showAllTasks ? "Свернуть" : "Все задачи (\(filteredTaskGroups.count))")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundStyle(.primary)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 14)
-                                .background(.ultraThinMaterial, in: Capsule())
-                        }
-                        .buttonStyle(.plain)
-                    }
-
-                    Button {
-                        showAddTask = true
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "plus")
-                                .font(.system(size: 14, weight: .semibold))
-                            Text("Новая группа")
-                                .font(.system(size: 14, weight: .semibold))
-                        }
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(
-                            LinearGradient(
-                                colors: [Color(red: 0.0, green: 0.48, blue: 1.0), Color(red: 0.34, green: 0.84, blue: 1.0)],
-                                startPoint: .leading, endPoint: .trailing
-                            ),
-                            in: Capsule()
-                        )
-                    }
-                    .buttonStyle(.plain)
-                }
-
-                Spacer(minLength: 60)
+        Group {
+            if embedded {
+                tasksContent
+            } else {
+                ScrollView(showsIndicators: false) { tasksContent }
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 4)
         }
         .sheet(isPresented: $showAddTask) {
             AddTaskGroupSheet { groupName, taskTitle, date, start, end, recurrence, priority in
                 vm.addTaskGroup(name: groupName, taskTitle: taskTitle, date: date, start: start, end: end, recurrence: recurrence, priority: priority)
             }
         }
+    }
+
+    private var tasksContent: some View {
+        VStack(spacing: 16) {
+            dateStrip
+
+            if filteredTaskGroups.isEmpty {
+                emptyTasksPlaceholder
+            } else {
+                VStack(spacing: 12) {
+                    ForEach(filteredTaskGroups.prefix(showAllTasks ? 99 : 2)) { group in
+                        TaskGroupCard(
+                            group: group,
+                            onToggle: { taskId in vm.toggleTask(groupId: group.id, taskId: taskId) },
+                            onDelete: { taskId in vm.deleteTask(groupId: group.id, taskId: taskId) }
+                        )
+                    }
+                }
+            }
+
+            HStack(spacing: 10) {
+                if filteredTaskGroups.count > 2 {
+                    Button {
+                        withAnimation { showAllTasks.toggle() }
+                    } label: {
+                        Text(showAllTasks ? "Свернуть" : "Все задачи (\(filteredTaskGroups.count))")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(.primary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(.ultraThinMaterial, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                Button { showAddTask = true } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "plus").font(.system(size: 14, weight: .semibold))
+                        Text("Новая группа").font(.system(size: 14, weight: .semibold))
+                    }
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(
+                        LinearGradient(
+                            colors: [Color(red: 0.0, green: 0.48, blue: 1.0), Color(red: 0.34, green: 0.84, blue: 1.0)],
+                            startPoint: .leading, endPoint: .trailing
+                        ),
+                        in: Capsule()
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+
+            Spacer(minLength: 40)
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 4)
     }
 
     private var dateStrip: some View {
@@ -1045,6 +1093,7 @@ struct AddTaskGroupSheet: View {
 
 struct KnowledgeSection: View {
     @ObservedObject var vm: LearningViewModel
+    @Binding var selectedTab: LearningTab
     @State private var selectedTopicId: String? = nil
     @State private var selectedNoteId: String? = nil
     @State private var showAddTopic = false
@@ -1684,4 +1733,147 @@ final class LearningViewModel: ObservableObject {
         knowledgeTopics[ti].notes[ni] = note
     }
 
+}
+
+// MARK: - Learning Add Sheet
+
+struct LearningAddSheet: View {
+    let selectedTab: LearningTab
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var fg: Color {
+        colorScheme == .dark ? .white : Color(red: 0.11, green: 0.11, blue: 0.14)
+    }
+
+    private var title: String {
+        switch selectedTab {
+        case .news:      return "Добавить тему"
+        case .tasks:     return "Новая задача"
+        case .knowledge: return "Новая заметка"
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 16) {
+                    Image(systemName: selectedTab == .tasks ? "checklist" : selectedTab == .knowledge ? "note.text.badge.plus" : "newspaper")
+                        .font(.system(size: 44))
+                        .foregroundStyle(Color(red: 0, green: 0.48, blue: 1))
+                        .padding(.top, 24)
+                    Text("Скоро")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(fg)
+                    Text("Создание контента будет доступно\nв следующем обновлении.")
+                        .font(.system(size: 15))
+                        .foregroundStyle(fg.opacity(0.5))
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(32)
+            }
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Закрыть") { dismiss() }
+                        .font(.system(size: 16, weight: .semibold))
+                        .tint(Color(red: 0, green: 0.48, blue: 1))
+                }
+            }
+        }
+        .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
+    }
+}
+
+// MARK: - Learning Settings Sheet
+
+struct LearningSettingsSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var fg: Color {
+        colorScheme == .dark ? .white : Color(red: 0.11, green: 0.11, blue: 0.14)
+    }
+
+    @State private var showCompleted   = true
+    @State private var dailyGoalTasks  = 3
+    @State private var newsAutoRefresh = true
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 20) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("ЗАДАЧИ")
+                            .font(.system(size: 11, weight: .semibold))
+                            .kerning(0.5)
+                            .textCase(.uppercase)
+                            .foregroundStyle(fg.opacity(0.35))
+                            .padding(.leading, 4)
+                        VStack(spacing: 0) {
+                            Toggle(isOn: $showCompleted) {
+                                Text("Показывать выполненные")
+                                    .font(.system(size: 15))
+                                    .foregroundStyle(fg)
+                            }
+                            .tint(Color(red: 0, green: 0.48, blue: 1))
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            Divider().padding(.leading, 16)
+                            HStack {
+                                Text("Цель задач в день")
+                                    .font(.system(size: 15))
+                                    .foregroundStyle(fg)
+                                Spacer()
+                                Text("\(dailyGoalTasks)")
+                                    .font(.system(size: 15))
+                                    .foregroundStyle(fg.opacity(0.5))
+                                Stepper("", value: $dailyGoalTasks, in: 1...20)
+                                    .labelsHidden()
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                        }
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+                        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(fg.opacity(0.08), lineWidth: 0.5))
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("НОВОСТИ")
+                            .font(.system(size: 11, weight: .semibold))
+                            .kerning(0.5)
+                            .textCase(.uppercase)
+                            .foregroundStyle(fg.opacity(0.35))
+                            .padding(.leading, 4)
+                        Toggle(isOn: $newsAutoRefresh) {
+                            Text("Авто-обновление")
+                                .font(.system(size: 15))
+                                .foregroundStyle(fg)
+                        }
+                        .tint(Color(red: 0, green: 0.48, blue: 1))
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+                        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(fg.opacity(0.08), lineWidth: 0.5))
+                    }
+                }
+                .padding(16)
+                .padding(.top, 8)
+            }
+            .navigationTitle("Настройки обучения")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Готово") { dismiss() }
+                        .font(.system(size: 16, weight: .semibold))
+                        .tint(Color(red: 0, green: 0.48, blue: 1))
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
 }

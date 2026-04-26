@@ -151,7 +151,9 @@ class FirebaseUserRepository: UserRepository {
             "spotlightEnabled": settings.spotlightEnabled,
             "calendarEnabled": settings.calendarEnabled,
             "iCloudEnabled": settings.iCloudEnabled,
-            "faceIDEnabled": settings.faceIDEnabled
+            "faceIDEnabled": settings.faceIDEnabled,
+            "appPasscodeEnabled": settings.appPasscodeEnabled,
+            "appAutoLockSec": settings.appAutoLockSec
         ]
     }
 
@@ -177,6 +179,8 @@ class FirebaseUserRepository: UserRepository {
         settings.calendarEnabled = data["calendarEnabled"] as? Bool ?? false
         settings.iCloudEnabled = data["iCloudEnabled"] as? Bool ?? false
         settings.faceIDEnabled = data["faceIDEnabled"] as? Bool ?? false
+        settings.appPasscodeEnabled = data["appPasscodeEnabled"] as? Bool ?? false
+        settings.appAutoLockSec = data["appAutoLockSec"] as? Int ?? 3600
         return settings
     }
 
